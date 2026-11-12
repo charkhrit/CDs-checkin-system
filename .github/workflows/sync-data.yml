@@ -2,23 +2,23 @@ name: Sync and Encrypt Master Data
 
 on:
   schedule:
-    - cron: '*/2 * * * *' # ดึงข้อมูลอัตโนมัติทุก 2 นาที
-  workflow_dispatch: # อนุญาตให้กดปุ่มรันแบบ Manual ได้
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 permissions:
-  contents: write # อนุญาตให้บอทเขียนไฟล์ลง GitHub Pages ได้
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Fetch and Encrypt Data
         env:
@@ -33,7 +33,6 @@ jobs:
           const url = process.env.GAS_EXPORTER_URL;
           const password = process.env.MASTER_PASSPHRASE;
 
-          // ดึงข้อมูลจาก GAS (รองรับการ Redirect 302 ของ Google)
           https.get(url, (res) => {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
               https.get(res.headers.location, (res2) => {
@@ -48,25 +47,16 @@ jobs:
             }
 
             function processData(dataStr) {
-              // สร้าง Key ด้วย PBKDF2 (100,000 รอบ)
               const salt = crypto.randomBytes(16);
               const iv = crypto.randomBytes(12);
               const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
               
-              // เข้ารหัส AES-256-GCM
               const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
               let encrypted = cipher.update(dataStr, "utf8", "hex");
               encrypted += cipher.final("hex");
               const authTag = cipher.getAuthTag().toString("hex");
 
-              const payload = {
-                salt: salt.toString("hex"),
-                iv: iv.toString("hex"),
-                authTag: authTag,
-                ciphertext: encrypted
-              };
-
-              // บันทึกไฟล์ที่เข้ารหัสแล้ว
+              const payload = { salt: salt.toString("hex"), iv: iv.toString("hex"), authTag: authTag, ciphertext: encrypted };
               fs.writeFileSync("data.json", JSON.stringify(payload));
               console.log("Encryption and data save successful.");
             }
@@ -74,7 +64,7 @@ jobs:
           '
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
