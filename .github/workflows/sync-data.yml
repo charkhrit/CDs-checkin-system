@@ -30,12 +30,13 @@ jobs:
           const fs = require("fs");
           const https = require("https");
 
-          const url = process.env.GAS_EXPORTER_URL;
-          const password = process.env.MASTER_PASSPHRASE;
+          // ใช้ .trim() เพื่อตัดช่องว่างหรือตัวขึ้นบรรทัดใหม่ที่ติดมากับ Secret ออกทั้งหมด
+          const url = process.env.GAS_EXPORTER_URL.trim();
+          const password = process.env.MASTER_PASSPHRASE.trim();
 
           https.get(url, (res) => {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-              https.get(res.headers.location, (res2) => {
+              https.get(res.headers.location.trim(), (res2) => {
                 let body = "";
                 res2.on("data", (chunk) => body += chunk);
                 res2.on("end", () => processData(body));
