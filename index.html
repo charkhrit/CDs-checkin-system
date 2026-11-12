@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบสแกนเช็กอินความเร็วสูง (Secure QR Scanner)</title>
+  
+  <!-- โหลดไลบรารีสแกน QR Code -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  
+  <!-- ตกแต่งหน้าจอให้ดูทันสมัยและใช้งานง่ายบนมือถือ -->
+  <style>
+    :root { --primary: #0284c7; --bg: #f8fafc; --surface: #ffffff; --text: #1e293b; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    .card { background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); width: 100%; max-width: 480px; text-align: center; }
+    h2 { margin-top: 0; color: var(--primary); }
+    input[type="password"] { width: 90%; padding: 12px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; text-align: center; }
+    button { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+    button:active { background: #0369a1; transform: scale(0.98); }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
+    #result-box { margin-top: 16px; padding: 16px; border-radius: 8px; display: none; text-align: left; }
+    .success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .log-entry { font-family: monospace; font-size: 14px; margin: 4px 0; border-bottom: 1px dashed #ccc; padding-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="auth-section">
+    <h2>🔒 กรุณายืนยันตัวตน</h2>
+    <p>ระบบสแกนเช็กอินเข้ารหัสแบบ Zero-Knowledge</p>
+    <input type="password" id="passphrase" placeholder="ใส่รหัสผ่านประจำสถานี (Passphrase)">
+    <button onclick="initSystem()">ปลดล็อกระบบ</button>
+    <div id="auth-status" style="margin-top: 16px; color: #64748b; font-size: 14px;"></div>
+  </div>
+
+  <div class="card" id="scanner-section" style="display:none;">
+    <h2>📷 สแกนรหัสคิวอาร์</h2>
+    <div id="reader"></div>
+    <div id="result-box"></div>
+    <h3 style="margin-top: 20px; font-size: 16px; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 8px;">ประวัติการสแกนล่าสุด:</h3>
+    <div id="recent-logs" style="text-align: left; max-height: 150px; overflow-y: auto;"></div>
+  </div>
+
+<script>
+// ==========================================
+// การตั้งค่าระบบ (โปรดแก้ให้ตรงกับของคุณ)
+// ==========================================
+
+// 1. นำ Web App URL ของ Google Apps Script ที่ Deploy ไว้ มาใส่ในเครื่องหมายคำพูดด้านล่าง
+const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwfbSJYwelyCEJltGafnZRCkXEcxtXi5szCEpyDaK6tYvCV0k2ssYCYSJJp5Ec07K9Q1g/exec";
+
+// ==========================================
+// ตัวแปรระบบ
+// ==========================================
+let localDatabaseMap = new Map();
+let isProcessing = false;
+let scannerInstance = null;
+
+// ==========================================
+// ฟังก์ชันถอดรหัส (Web Crypto API - AES-256-GCM)
+// ==========================================
+async function deriveKey(passphrase, saltHex) {
+  const enc = new TextEncoder();
+  const salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-256-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+}
+
+async function decryptPayload(payload, passphrase) {
+  const key = await deriveKey(passphrase, payload.salt);
+  const iv = new Uint8Array(payload.iv.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  const authTag = new Uint8Array(payload.authTag.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  const ciphertext = new Uint8Array(payload.ciphertext.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  
+  // นำ Ciphertext และ AuthTag มาต่อกัน (ตามมาตรฐาน GCM)
+  const cipherWithTag = new Uint8Array(ciphertext.length + authTag.length);
+  cipherWithTag.set(ciphertext);
+  cipherWithTag.set(authTag, ciphertext.length);
+
+  // ถอดรหัส
+  const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-256-GCM", iv: iv, tagLength: 128 }, key, cipherWithTag);
+  return JSON.parse(new TextDecoder().decode(decryptedBuffer));
+}
+
+// ==========================================
+// กระบวนการเตรียมระบบ (โหลดข้อมูล และ ปลดล็อก)
+// ==========================================
+async function initSystem() {
+  const passphrase = document.getElementById("passphrase").value;
+  const statusEl = document.getElementById("auth-status");
+  
+  if (!passphrase) {
+    statusEl.innerText = "⚠️ กรุณาพิมพ์รหัสผ่าน";
+    return;
+  }
+  
+  statusEl.innerText = "⏳ กำลังดาวน์โหลดข้อมูลที่เข้ารหัส...";
+  
+  try {
+    // โหลดไฟล์ที่ถูกเข้ารหัสจาก GitHub Pages (โฟลเดอร์เดียวกัน)
+    const res = await fetch("data.json?t=" + new Date().getTime()); // ป้องกันเบราว์เซอร์แคชไฟล์เก่า
+    if (!res.ok) throw new Error("หาไฟล์ data.json ไม่พบ หรือบอทยังทำงานไม่เสร็จ");
+    const payload = await res.json();
+    
+    statusEl.innerText = "🔐 กำลังตรวจสอบรหัสผ่านและถอดรหัส...";
+    const rawData = await decryptPayload(payload, passphrase);
+    
+    // โหลดลงหน่วยความจำ RAM (ใช้คอลัมน์ UID หรือคอลัมน์แรกเป็น Key)
+    rawData.forEach(item => {
+      // ค้นหาคีย์ที่มีคำว่า UID (ถ้าหาไม่เจอจะเอาคอลัมน์แรกสุดมาเป็นคีย์)
+      let uidKey = Object.keys(item).find(k => k.toUpperCase().includes('UID')) || Object.keys(item)[0];
+      localDatabaseMap.set(String(item[uidKey]).trim(), item);
+    });
+    
+    // เปลี่ยนหน้าจอไปหน้าสแกน
+    document.getElementById("auth-section").style.display = "none";
+    document.getElementById("scanner-section").style.display = "block";
+    
+    // เริ่มเปิดกล้อง
+    startScanner();
+    
+  } catch (err) {
+    console.error(err);
+    statusEl.innerHTML = `<span style="color:red">❌ รหัสผ่านไม่ถูกต้อง หรือข้อมูลผิดพลาด<br>(${err.message})</span>`;
+    document.getElementById("passphrase").value = "";
+  }
+}
+
+// ==========================================
+// ระบบสแกน QR Code
+// ==========================================
+function startScanner() {
+  scannerInstance = new Html5QrcodeScanner("reader", { 
+    fps: 15, 
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0 
+  });
+  scannerInstance.render(onScanSuccess);
+}
+
+function onScanSuccess(decodedText) {
+  if (isProcessing) return; // ป้องกันการสแกนซ้อนขณะโหลด
+  isProcessing = true;
+  
+  const uid = String(decodedText).trim();
+  const resBox = document.getElementById("result-box");
+  const recentLogs = document.getElementById("recent-logs");
+  
+  // ค้นหาใน RAM ทันที (0.001 วินาที)
+  if (localDatabaseMap.has(uid)) {
+    const record = localDatabaseMap.get(uid);
+    // ดึงชื่อและนามสกุลมาโชว์ (อิงจากหัวคอลัมน์ที่ตั้งไว้)
+    const name = record["ชื่อ"] || record["Name"] || "-";
+    const surname = record["นามสกุล"] || record["Surname"] || "";
+    
+    resBox.className = "success";
+    resBox.innerHTML = `<strong>✅ ยืนยันตัวตนสำเร็จ</strong><br>รหัส: ${uid}<br>ชื่อ: ${name} ${surname}`;
+    resBox.style.display = "block";
+    
+    addLog(`✅ ${uid} - ${name}`, recentLogs);
+    
+    // ส่งข้อมูลเช็กอินเบื้องหลัง (Fire and Forget)
+    sendLogAsync(uid, "SUCCESS");
+    
+  } else {
+    resBox.className = "error";
+    resBox.innerHTML = `<strong>❌ ไม่พบข้อมูล</strong><br>รหัส: ${uid} ไม่อยู่ในระบบ`;
+    resBox.style.display = "block";
+    
+    addLog(`❌ ${uid} - ไม่พบข้อมูล`, recentLogs);
+    sendLogAsync(uid, "NOT_FOUND");
+  }
+  
+  // พักกล้อง 2.5 วินาที ก่อนเปิดให้สแกนคนต่อไป
+  setTimeout(() => {
+    isProcessing = false;
+    resBox.style.display = "none";
+  }, 2500);
+}
+
+function addLog(text, container) {
+  const timeStr = new Date().toLocaleTimeString('th-TH');
+  const div = document.createElement("div");
+  div.className = "log-entry";
+  div.innerText = `[${timeStr}] ${text}`;
+  container.prepend(div);
+}
+
+// ==========================================
+// ส่ง Log กลับไปที่ Google Sheets (Write-Only)
+// ==========================================
+function sendLogAsync(uid, status) {
+  if (GAS_WEBAPP_URL === "นำ_WEB_APP_URL_ของคุณมาวางที่นี่") {
+    console.error("ลืมใส่ URL ของ Web App ครับ");
+    return;
+  }
+  
+  // ใช้ fetch ในการส่งแบบ Background (ไม่รอ Response ทำให้สแกนคนต่อไปได้เลย)
+  fetch(GAS_WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, // ใช้ text/plain เลี่ยงปัญหา CORS Preflight
+    body: JSON.stringify({
+      uid: uid,
+      stationId: "STATION_" + Math.floor(Math.random() * 1000), // สร้าง ID สถานีจำลอง
+      status: status
+    })
+  }).catch(err => console.error("Error sending log:", err));
+}
+</script>
+</body>
+</html>
