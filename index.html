@@ -2,68 +2,54 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <!-- ปรับ Viewport ให้แสดงผลพอดีจอ และล็อกการซูมบนมือถือ -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบสแกนเช็กอินความเร็วสูง (Secure QR Scanner)</title>
-  
-  <!-- โหลดไลบรารีสแกน QR Code (รองรับมือถือ แท็บเล็ต PC อัตโนมัติ) -->
   <script src="https://unpkg.com/html5-qrcode"></script>
-  
   <style>
     :root { --primary: #0284c7; --bg: #f8fafc; --surface: #ffffff; --text: #1e293b; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
     .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); width: 100%; max-width: 500px; text-align: center; box-sizing: border-box; }
-    h2 { margin-top: 0; color: var(--primary); font-size: 1.4rem; }
-    input[type="password"] { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; text-align: center; box-sizing: border-box; }
-    button.btn-primary { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
+    h2 { margin-top: 0; color: var(--primary); font-size: 1.5rem; }
+    input[type="password"] { width: 100%; padding: 14px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 18px; text-align: center; box-sizing: border-box; }
+    button.btn-primary { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
     button.btn-primary:active { background: #0369a1; transform: scale(0.98); }
     #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: #f1f5f9; }
-    /* ปรับแต่งปุ่มของตัวสแกนให้กดง่ายบนมือถือ */
-    #reader button { padding: 8px 16px; margin: 6px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-family: inherit; }
-    #reader select { padding: 8px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 90%; max-width: 300px; }
-    #result-box { margin-top: 16px; padding: 16px; border-radius: 8px; display: none; text-align: left; }
+    #reader button { padding: 10px 18px; margin: 6px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 15px; }
+    #reader select { padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 90%; font-size: 15px; }
+    
+    #result-box { margin-top: 16px; padding: 20px; border-radius: 10px; display: none; text-align: left; font-size: 1.2rem; line-height: 1.7; }
+    #result-box strong { font-size: 1.3rem; }
     .success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-    .log-entry { font-family: monospace; font-size: 13px; margin: 4px 0; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px; }
+    .log-entry { font-family: monospace; font-size: 14px; margin: 6px 0; border-bottom: 1px dashed #e2e8f0; padding-bottom: 6px; }
   </style>
 </head>
 <body>
 
   <div class="card" id="auth-section">
     <h2>🔒 กรุณายืนยันตัวตน</h2>
-    <p style="font-size: 14px; color: #64748b;">ระบบสแกนเช็กอิน (รองรับทุกอุปกรณ์)</p>
-    <input type="password" id="passphrase" placeholder="ใส่รหัสผ่านประจำสถานี (Passphrase)">
+    <p style="font-size: 15px; color: #64748b;">ระบบสแกนเช็กอินภาคสนาม</p>
+    <input type="password" id="passphrase" placeholder="ใส่รหัสผ่านประจำสถานี">
     <button class="btn-primary" onclick="initSystem()">ปลดล็อกระบบ</button>
-    <div id="auth-status" style="margin-top: 16px; color: #64748b; font-size: 14px;"></div>
+    <div id="auth-status" style="margin-top: 16px; color: #64748b; font-size: 15px;"></div>
   </div>
 
   <div class="card" id="scanner-section" style="display:none;">
     <h2>📷 สแกนรหัสคิวอาร์</h2>
-    <!-- พื้นที่แสดงกล้อง -->
     <div id="reader"></div>
     <div id="result-box"></div>
-    <h3 style="margin-top: 20px; font-size: 15px; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 8px;">ประวัติการสแกนล่าสุด:</h3>
-    <div id="recent-logs" style="text-align: left; max-height: 180px; overflow-y: auto;"></div>
+    <h3 style="margin-top: 20px; font-size: 16px; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 8px;">ประวัติการสแกนล่าสุด:</h3>
+    <div id="recent-logs" style="text-align: left; max-height: 200px; overflow-y: auto;"></div>
   </div>
 
 <script>
-// ==========================================
-// การตั้งค่าระบบ (โปรดแก้ให้ตรงกับของคุณ)
-// ==========================================
-
-// 1. นำ Web App URL ของ Google Apps Script มาใส่ในเครื่องหมายคำพูดด้านล่าง
+// ใส่ Web App URL ของ Google Apps Script ที่นี่
 const GAS_WEBAPP_URL = "นำ_WEB_APP_URL_ของคุณมาวางที่นี่";
 
-// ==========================================
-// ตัวแปรระบบ
-// ==========================================
 let localDatabaseMap = new Map();
 let isProcessing = false;
 let scannerInstance = null;
 
-// ==========================================
-// ฟังก์ชันถอดรหัส (Web Crypto API - แก้เป็น AES-GCM แล้ว)
-// ==========================================
 async function deriveKey(passphrase, saltHex) {
   const enc = new TextEncoder();
   const salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
@@ -91,9 +77,6 @@ async function decryptPayload(payload, passphrase) {
   return JSON.parse(new TextDecoder().decode(decryptedBuffer));
 }
 
-// ==========================================
-// กระบวนการเตรียมระบบ (โหลดข้อมูล และ ปลดล็อก)
-// ==========================================
 async function initSystem() {
   const passphrase = document.getElementById("passphrase").value;
   const statusEl = document.getElementById("auth-status");
@@ -103,18 +86,20 @@ async function initSystem() {
     return;
   }
   
-  statusEl.innerText = "⏳ กำลังดาวน์โหลดข้อมูลที่เข้ารหัส...";
+  statusEl.innerText = "⏳ กำลังดาวน์โหลดข้อมูล...";
   
   try {
     const res = await fetch("data.json?t=" + new Date().getTime());
-    if (!res.ok) throw new Error("หาไฟล์ data.json ไม่พบ หรือบอทยังทำงานไม่เสร็จ");
+    if (!res.ok) throw new Error("ไม่พบไฟล์ข้อมูล หรือบอทยังทำงานไม่เสร็จ");
     const payload = await res.json();
     
-    statusEl.innerText = "🔐 กำลังตรวจสอบรหัสผ่านและถอดรหัส...";
+    statusEl.innerText = "🔐 กำลังถอดรหัสข้อมูล...";
     const rawData = await decryptPayload(payload, passphrase);
     
     rawData.forEach(item => {
-      let uidKey = Object.keys(item).find(k => k.toUpperCase().includes('UID')) || Object.keys(item)[0];
+      // ค้นหาคอลัมน์แรกสุดที่เป็นรหัส (UID / ID / หรือคอลัมน์ A)
+      let keys = Object.keys(item);
+      let uidKey = keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID')) || keys[0];
       localDatabaseMap.set(String(item[uidKey]).trim(), item);
     });
     
@@ -130,20 +115,36 @@ async function initSystem() {
   }
 }
 
-// ==========================================
-// ระบบสแกน QR Code (ปรับให้รองรับหน้าจอมือถือ)
-// ==========================================
 function startScanner() {
-  // คำนวณขนาดกรอบสแกนให้พอดีกับหน้าจอมือถือ
-  let qrboxSize = window.innerWidth < 400 ? 200 : 250;
-  
+  let qrboxSize = window.innerWidth < 400 ? 220 : 260;
   scannerInstance = new Html5QrcodeScanner("reader", { 
-    fps: 10, // ลดเฟรมเรตลงเล็กน้อยเพื่อประหยัดแบตเตอรี่มือถือ
+    fps: 10,
     qrbox: { width: qrboxSize, height: qrboxSize },
     aspectRatio: 1.0,
-    rememberLastUsedCamera: true // จำกล้องล่าสุดที่ใช้
+    rememberLastUsedCamera: true
   });
   scannerInstance.render(onScanSuccess);
+}
+
+// ซ่อนเลขบัตรประชาชน (หลักที่ 5 ถึง 10 เป็น x)
+function maskIdCard(id) {
+  if (!id) return "-";
+  let s = String(id).trim();
+  if (s.length >= 10) {
+    return s.substring(0, 4) + "xxxxxx" + s.substring(10);
+  }
+  return s;
+}
+
+// แสดงเบอร์โทรศัพท์เฉพาะ 2 ตัวท้าย (ด้านหน้าเป็น x)
+function maskPhone(phone) {
+  if (!phone) return "-";
+  let s = String(phone).trim();
+  if (s.length >= 2) {
+    let last2 = s.slice(-2);
+    return "xxxxxxxx" + last2;
+  }
+  return s;
 }
 
 function onScanSuccess(decodedText) {
@@ -156,14 +157,30 @@ function onScanSuccess(decodedText) {
   
   if (localDatabaseMap.has(uid)) {
     const record = localDatabaseMap.get(uid);
-    const name = record["ชื่อ"] || record["Name"] || "-";
-    const surname = record["นามสกุล"] || record["Surname"] || "";
+    
+    // ดึงข้อมูลตามชื่อหัวคอลัมน์ในชีตของคุณ
+    const name = record["ชื่อ"] || "-";
+    const surname = record["นามสกุล"] || "";
+    const rawId = record["เลขบัตรประชาชน"] || "";
+    const rawPhone = record["เบอร์โทรศัพท์"] || "";
+    const carPlate = record["ทะเบียนรถ"] || "-";
+    const countPeople = record["จำนวนคน"] || "1";
+    
+    const maskedId = maskIdCard(rawId);
+    const maskedPhone = maskPhone(rawPhone);
     
     resBox.className = "success";
-    resBox.innerHTML = `<strong>✅ ยืนยันตัวตนสำเร็จ</strong><br>รหัส: ${uid}<br>ชื่อ: ${name} ${surname}`;
+    resBox.innerHTML = `
+      <strong>✅ ตรวจสอบสำเร็จ</strong><hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
+      👤 <b>ชื่อ-นามสกุล:</b> ${name} ${surname}<br>
+      🆔 <b>เลขบัตรประชาชน:</b> ${maskedId}<br>
+      📞 <b>เบอร์โทรศัพท์:</b> ${maskedPhone}<br>
+      🚗 <b>ทะเบียนรถ:</b> ${carPlate}<br>
+      👥 <b>จำนวนคน:</b> ${countPeople} ท่าน
+    `;
     resBox.style.display = "block";
     
-    addLog(`✅ ${uid} - ${name}`, recentLogs);
+    addLog(`✅ ${uid} - ${name} ${surname}`, recentLogs);
     sendLogAsync(uid, "SUCCESS");
     
   } else {
@@ -178,7 +195,7 @@ function onScanSuccess(decodedText) {
   setTimeout(() => {
     isProcessing = false;
     resBox.style.display = "none";
-  }, 2500);
+  }, 4000);
 }
 
 function addLog(text, container) {
@@ -189,9 +206,6 @@ function addLog(text, container) {
   container.prepend(div);
 }
 
-// ==========================================
-// ส่ง Log กลับไปที่ Google Sheets
-// ==========================================
 function sendLogAsync(uid, status) {
   if (GAS_WEBAPP_URL.includes("นำ_WEB_APP_URL")) return;
   
