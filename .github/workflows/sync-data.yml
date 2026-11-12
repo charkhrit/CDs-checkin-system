@@ -1,0 +1,81 @@
+name: Sync and Encrypt Master Data
+
+on:
+  schedule:
+    - cron: '*/2 * * * *' # ดึงข้อมูลอัตโนมัติทุก 2 นาที
+  workflow_dispatch: # อนุญาตให้กดปุ่มรันแบบ Manual ได้
+
+permissions:
+  contents: write # อนุญาตให้บอทเขียนไฟล์ลง GitHub Pages ได้
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Fetch and Encrypt Data
+        env:
+          GAS_EXPORTER_URL: ${{ secrets.GAS_EXPORTER_URL }}
+          MASTER_PASSPHRASE: ${{ secrets.MASTER_PASSPHRASE }}
+        run: |
+          node -e '
+          const crypto = require("crypto");
+          const fs = require("fs");
+          const https = require("https");
+
+          const url = process.env.GAS_EXPORTER_URL;
+          const password = process.env.MASTER_PASSPHRASE;
+
+          // ดึงข้อมูลจาก GAS (รองรับการ Redirect 302 ของ Google)
+          https.get(url, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              https.get(res.headers.location, (res2) => {
+                let body = "";
+                res2.on("data", (chunk) => body += chunk);
+                res2.on("end", () => processData(body));
+              });
+            } else {
+              let body = "";
+              res.on("data", (chunk) => body += chunk);
+              res.on("end", () => processData(body));
+            }
+
+            function processData(dataStr) {
+              // สร้าง Key ด้วย PBKDF2 (100,000 รอบ)
+              const salt = crypto.randomBytes(16);
+              const iv = crypto.randomBytes(12);
+              const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
+              
+              // เข้ารหัส AES-256-GCM
+              const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+              let encrypted = cipher.update(dataStr, "utf8", "hex");
+              encrypted += cipher.final("hex");
+              const authTag = cipher.getAuthTag().toString("hex");
+
+              const payload = {
+                salt: salt.toString("hex"),
+                iv: iv.toString("hex"),
+                authTag: authTag,
+                ciphertext: encrypted
+              };
+
+              // บันทึกไฟล์ที่เข้ารหัสแล้ว
+              fs.writeFileSync("data.json", JSON.stringify(payload));
+              console.log("Encryption and data save successful.");
+            }
+          });
+          '
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          exclude_assets: '.github'
