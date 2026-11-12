@@ -17,10 +17,28 @@
     #reader button { padding: 10px 18px; margin: 6px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 15px; }
     #reader select { padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 90%; font-size: 15px; }
     
-    #result-box { margin-top: 16px; padding: 20px; border-radius: 10px; display: none; text-align: left; font-size: 1.2rem; line-height: 1.7; }
-    #result-box strong { font-size: 1.3rem; }
-    .success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    /* กล่องผลลัพธ์และการจัดไฟสถานะ */
+    #result-box { margin-top: 16px; padding: 20px; border-radius: 10px; display: none; text-align: left; font-size: 1.2rem; line-height: 1.7; transition: all 0.3s ease; }
+    .success { background: #dcfce7; color: #166534; border: 2px solid #22c55e; }
+    .error { background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; }
+    
+    /* สไตล์ไฟสถานะกระพริบ (Indicator Dot) */
+    .status-indicator { display: flex; align-items: center; font-weight: bold; font-size: 1.3rem; margin-bottom: 8px; }
+    .dot { height: 16px; width: 16px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); }
+    .dot-green { background-color: #22c55e; animation: pulse-green 1.5s infinite; }
+    .dot-red { background-color: #ef4444; animation: pulse-red 1.5s infinite; }
+
+    @keyframes pulse-green {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    @keyframes pulse-red {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
     .log-entry { font-family: monospace; font-size: 14px; margin: 6px 0; border-bottom: 1px dashed #e2e8f0; padding-bottom: 6px; }
   </style>
 </head>
@@ -43,8 +61,7 @@
   </div>
 
 <script>
-// ใส่ Web App URL ของ Google Apps Script ที่นี่
-const GAS_WEBAPP_URL = "นำ_WEB_APP_URL_ของคุณมาวางที่นี่";
+const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwfbSJYwelyCEJltGafnZRCkXEcxtXi5szCEpyDaK6tYvCV0k2ssYCYSJJp5Ec07K9Q1g/exec";
 
 let localDatabaseMap = new Map();
 let isProcessing = false;
@@ -97,7 +114,6 @@ async function initSystem() {
     const rawData = await decryptPayload(payload, passphrase);
     
     rawData.forEach(item => {
-      // ค้นหาคอลัมน์แรกสุดที่เป็นรหัส (UID / ID / หรือคอลัมน์ A)
       let keys = Object.keys(item);
       let uidKey = keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID')) || keys[0];
       localDatabaseMap.set(String(item[uidKey]).trim(), item);
@@ -126,7 +142,6 @@ function startScanner() {
   scannerInstance.render(onScanSuccess);
 }
 
-// ซ่อนเลขบัตรประชาชน (หลักที่ 5 ถึง 10 เป็น x)
 function maskIdCard(id) {
   if (!id) return "-";
   let s = String(id).trim();
@@ -136,7 +151,6 @@ function maskIdCard(id) {
   return s;
 }
 
-// แสดงเบอร์โทรศัพท์เฉพาะ 2 ตัวท้าย (ด้านหน้าเป็น x)
 function maskPhone(phone) {
   if (!phone) return "-";
   let s = String(phone).trim();
@@ -158,7 +172,6 @@ function onScanSuccess(decodedText) {
   if (localDatabaseMap.has(uid)) {
     const record = localDatabaseMap.get(uid);
     
-    // ดึงข้อมูลตามชื่อหัวคอลัมน์ในชีตของคุณ
     const name = record["ชื่อ"] || "-";
     const surname = record["นามสกุล"] || "";
     const rawId = record["เลขบัตรประชาชน"] || "";
@@ -169,9 +182,11 @@ function onScanSuccess(decodedText) {
     const maskedId = maskIdCard(rawId);
     const maskedPhone = maskPhone(rawPhone);
     
+    // สถานะพบข้อมูล: แสดงไฟสีเขียว
     resBox.className = "success";
     resBox.innerHTML = `
-      <strong>✅ ตรวจสอบสำเร็จ</strong><hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
+      <div class="status-indicator"><span class="dot dot-green"></span> พบข้อมูลในระบบ (สำเร็จ)</div>
+      <hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
       👤 <b>ชื่อ-นามสกุล:</b> ${name} ${surname}<br>
       🆔 <b>เลขบัตรประชาชน:</b> ${maskedId}<br>
       📞 <b>เบอร์โทรศัพท์:</b> ${maskedPhone}<br>
@@ -184,8 +199,14 @@ function onScanSuccess(decodedText) {
     sendLogAsync(uid, "SUCCESS");
     
   } else {
+    // สถานะไม่พบข้อมูล: แสดงไฟสีแดง
     resBox.className = "error";
-    resBox.innerHTML = `<strong>❌ ไม่พบข้อมูล</strong><br>รหัส: ${uid} ไม่อยู่ในระบบ`;
+    resBox.innerHTML = `
+      <div class="status-indicator"><span class="dot dot-red"></span> ไม่พบข้อมูลในระบบ</div>
+      <hr style="margin: 8px 0; border:0; border-top:1px solid #fecaca;">
+      รหัสที่สแกน: <b>${uid}</b><br>
+      <span style="font-size: 1rem; color: #b91c1c;">กรุณาตรวจสอบรายชื่อใหม่อีกครั้ง</span>
+    `;
     resBox.style.display = "block";
     
     addLog(`❌ ${uid} - ไม่พบข้อมูล`, recentLogs);
@@ -195,7 +216,7 @@ function onScanSuccess(decodedText) {
   setTimeout(() => {
     isProcessing = false;
     resBox.style.display = "none";
-  }, 4000);
+  }, 4500); // ขยายเวลาโชว์ผลลัพธ์เป็น 4.5 วินาทีเพื่อให้เจ้าหน้าที่อ่านและสังเกตไฟสถานะได้ทัน
 }
 
 function addLog(text, container) {
