@@ -1,0 +1,43 @@
+# วางที่ .github/workflows/export-data.yml (ปรับ cron / ชื่อ branch ตามที่ใช้จริง)
+name: Export and encrypt data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check secrets exist
+        env:
+          GAS_EXPORTER_URL: ${{ secrets.GAS_EXPORTER_URL }}
+          MASTER_PASSPHRASE: ${{ secrets.MASTER_PASSPHRASE }}
+        run: |
+          [ -n "$GAS_EXPORTER_URL" ] || { echo "::error::Secret GAS_EXPORTER_URL ว่างหรือไม่ได้ตั้งค่า"; exit 1; }
+          [ -n "$MASTER_PASSPHRASE" ] || { echo "::error::Secret MASTER_PASSPHRASE ว่างหรือไม่ได้ตั้งค่า"; exit 1; }
+
+      - name: Export and encrypt
+        run: node scripts/export-encrypt.js
+        env:
+          GAS_EXPORTER_URL: ${{ secrets.GAS_EXPORTER_URL }}
+          MASTER_PASSPHRASE: ${{ secrets.MASTER_PASSPHRASE }}
+
+      - name: Commit data.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --staged --quiet || git commit -m "chore: update encrypted data"
+          git push
