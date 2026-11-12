@@ -30,7 +30,7 @@ jobs:
           const fs = require("fs");
           const https = require("https");
 
-          // ใช้ .trim() เพื่อตัดช่องว่างหรือตัวขึ้นบรรทัดใหม่ที่ติดมากับ Secret ออกทั้งหมด
+          // ใช้ .trim() ตัดช่องว่างและตัวขึ้นบรรทัดใหม่ที่ติดมากับ Secret ทิ้งทั้งหมด
           const url = process.env.GAS_EXPORTER_URL.trim();
           const password = process.env.MASTER_PASSPHRASE.trim();
 
