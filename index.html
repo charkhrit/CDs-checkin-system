@@ -47,7 +47,7 @@
   <div class="card" id="auth-section">
     <h2>🔒 กรุณายืนยันตัวตน</h2>
     <p style="font-size: 15px; color: #64748b;">ระบบสแกนเช็กอินภาคสนาม</p>
-    <input type="password" id="passphrase" placeholder="ใส่รหัสผ่านประจำสถานี">
+    <input type="password" id="passphrase" placeholder="ใส่รหัสผ่านประจำสถานี" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <button class="btn-primary" onclick="initSystem()">ปลดล็อกระบบ</button>
     <div id="auth-status" style="margin-top: 16px; color: #64748b; font-size: 15px;"></div>
   </div>
@@ -67,9 +67,13 @@ let localDatabaseMap = new Map();
 let isProcessing = false;
 let scannerInstance = null;
 
+function hexToBytes(hex) {
+  return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+}
+
 async function deriveKey(passphrase, saltHex) {
   const enc = new TextEncoder();
-  const salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  const salt = hexToBytes(saltHex);
   const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
   return await crypto.subtle.deriveKey(
     { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
@@ -82,9 +86,9 @@ async function deriveKey(passphrase, saltHex) {
 
 async function decryptPayload(payload, passphrase) {
   const key = await deriveKey(passphrase, payload.salt);
-  const iv = new Uint8Array(payload.iv.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-  const authTag = new Uint8Array(payload.authTag.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-  const ciphertext = new Uint8Array(payload.ciphertext.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  const iv = hexToBytes(payload.iv);
+  const authTag = hexToBytes(payload.authTag);
+  const ciphertext = hexToBytes(payload.ciphertext);
   
   const cipherWithTag = new Uint8Array(ciphertext.length + authTag.length);
   cipherWithTag.set(ciphertext);
@@ -95,7 +99,8 @@ async function decryptPayload(payload, passphrase) {
 }
 
 async function initSystem() {
-  const passphrase = document.getElementById("passphrase").value;
+  // ตัดช่องว่างหัว-ท้าย (คีย์บอร์ดมือถือมักเติมเว้นวรรคท้ายคำให้เอง)
+  const passphrase = document.getElementById("passphrase").value.trim();
   const statusEl = document.getElementById("auth-status");
   
   if (!passphrase) {
@@ -106,13 +111,26 @@ async function initSystem() {
   statusEl.innerText = "⏳ กำลังดาวน์โหลดข้อมูล...";
   
   try {
-    const res = await fetch("data.json?t=" + new Date().getTime());
-    if (!res.ok) throw new Error("ไม่พบไฟล์ข้อมูล หรือบอทยังทำงานไม่เสร็จ");
+    const res = await fetch("data.json?t=" + new Date().getTime(), { cache: "no-store" });
+    if (!res.ok) throw new Error("ไม่พบไฟล์ข้อมูล หรือบอทยังทำงานไม่เสร็จ (HTTP " + res.status + ")");
     const payload = await res.json();
+
+    if (!payload || !payload.salt || !payload.iv || !payload.authTag || !payload.ciphertext) {
+      throw new Error("ไฟล์ data.json ไม่อยู่ในรูปแบบที่เข้ารหัสไว้");
+    }
     
     statusEl.innerText = "🔐 กำลังถอดรหัสข้อมูล...";
-    const rawData = await decryptPayload(payload, passphrase);
+    let rawData = await decryptPayload(payload, passphrase);
+
+    // รองรับกรณี GAS ส่งข้อมูลมาเป็น object ที่ห่อรายการไว้ข้างใน
+    if (!Array.isArray(rawData) && rawData) {
+      rawData = rawData.data || rawData.rows || rawData.records || Object.values(rawData);
+    }
+    if (!Array.isArray(rawData)) {
+      throw new Error("โครงสร้างข้อมูลไม่ใช่รายการ (array)");
+    }
     
+    localDatabaseMap.clear();
     rawData.forEach(item => {
       let keys = Object.keys(item);
       let uidKey = keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID')) || keys[0];
@@ -126,7 +144,12 @@ async function initSystem() {
     
   } catch (err) {
     console.error(err);
-    statusEl.innerHTML = `<span style="color:red">❌ รหัสผ่านไม่ถูกต้อง หรือข้อมูลผิดพลาด<br>(${err.message})</span>`;
+    // Web Crypto โยน OperationError (ไม่มีข้อความ) เมื่อกุญแจไม่ตรงกับตอนเข้ารหัส
+    const wrongKey = err && err.name === "OperationError";
+    const msg = wrongKey
+      ? "รหัสผ่านไม่ตรงกับที่ใช้เข้ารหัส หรือ data.json เป็นไฟล์เก่า"
+      : (err && err.message ? err.message : "ข้อมูลผิดพลาด");
+    statusEl.innerHTML = `<span style="color:red">❌ ${msg}</span>`;
     document.getElementById("passphrase").value = "";
   }
 }
