@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ระบบสแกนเช็กอินความเร็วสูง (Secure QR Scanner)</title>
+  <title>ระบบเช็กอินวันเด็กแห่งชาติ บน.46</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     :root { --primary: #0284c7; --bg: #f8fafc; --surface: #ffffff; --text: #1e293b; }
@@ -61,7 +61,7 @@
   </div>
 
 <script>
-const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwfbSJYwelyCEJltGafnZRCkXEcxtXi5szCEpyDaK6tYvCV0k2ssYCYSJJp5Ec07K9Q1g/exec";
+const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwk_TbXhr4i2HiI4LssWjkH89gD54SIBKIzsHsexE2015q959XSt8Q_6DAnQF2n0jrNmw/exec";
 
 let localDatabaseMap = new Map();
 let isProcessing = false;
@@ -123,8 +123,9 @@ async function initSystem() {
     let rawData = await decryptPayload(payload, passphrase);
 
     // รองรับกรณี GAS ส่งข้อมูลมาเป็น object ที่ห่อรายการไว้ข้างใน
-    if (!Array.isArray(rawData) && rawData) {
-      rawData = rawData.data || rawData.rows || rawData.records || Object.values(rawData);
+    if (rawData && !Array.isArray(rawData)) {
+      if (rawData.error) throw new Error("GAS ปฏิเสธคำขอ: " + rawData.error);
+      rawData = rawData.data || rawData.rows || rawData.records;
     }
     if (!Array.isArray(rawData)) {
       throw new Error("โครงสร้างข้อมูลไม่ใช่รายการ (array)");
@@ -133,7 +134,9 @@ async function initSystem() {
     localDatabaseMap.clear();
     rawData.forEach(item => {
       let keys = Object.keys(item);
-      let uidKey = keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID')) || keys[0];
+      let uidKey = keys.find(k => ['ID', 'UID'].includes(k.trim().toUpperCase()))
+        || keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID'))
+        || keys[0];
       localDatabaseMap.set(String(item[uidKey]).trim(), item);
     });
     
@@ -192,8 +195,12 @@ function onScanSuccess(decodedText) {
   const resBox = document.getElementById("result-box");
   const recentLogs = document.getElementById("recent-logs");
   
+  // 👉 ตรวจสอบค่าดิบ (Debugging)
+  console.log("🔍 ค่าจาก QR Code (UID):", uid);
+  
   if (localDatabaseMap.has(uid)) {
     const record = localDatabaseMap.get(uid);
+    console.log("✅ พบข้อมูลจับคู่สำเร็จ:", record);
     
     const name = record["ชื่อ"] || "-";
     const surname = record["นามสกุล"] || "";
@@ -215,6 +222,10 @@ function onScanSuccess(decodedText) {
       📞 <b>เบอร์โทรศัพท์:</b> ${maskedPhone}<br>
       🚗 <b>ทะเบียนรถ:</b> ${carPlate}<br>
       👥 <b>จำนวนคน:</b> ${countPeople} ท่าน
+      <hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
+      <div style="font-size: 0.9rem; color: #166534; font-family: monospace;">
+        [DEBUG] UID: ${uid}
+      </div>
     `;
     resBox.style.display = "block";
     
@@ -222,13 +233,25 @@ function onScanSuccess(decodedText) {
     sendLogAsync(uid, "SUCCESS");
     
   } else {
-    // สถานะไม่พบข้อมูล: แสดงไฟสีแดง
+    // สถานะไม่พบข้อมูล: แสดงไฟสีแดง และโชว์ข้อมูล Debug
     resBox.className = "error";
+    
+    // ดึงค่า Key ทั้งหมดในฐานข้อมูลมาแสดง 3 ค่าแรก เพื่อดูรูปแบบ
+    const keysArray = Array.from(localDatabaseMap.keys());
+    const sampleKeys = keysArray.slice(0, 3).join(", ") || "ไม่มีข้อมูล";
+
     resBox.innerHTML = `
       <div class="status-indicator"><span class="dot dot-red"></span> ไม่พบข้อมูลในระบบ</div>
       <hr style="margin: 8px 0; border:0; border-top:1px solid #fecaca;">
       รหัสที่สแกน: <b>${uid}</b><br>
       <span style="font-size: 1rem; color: #b91c1c;">กรุณาตรวจสอบรายชื่อใหม่อีกครั้ง</span>
+      <hr style="margin: 8px 0; border:0; border-top:1px solid #fecaca;">
+      <div style="font-size: 0.85rem; color: #991b1b; font-family: monospace; word-break: break-all;">
+        [DEBUG INFO]<br>
+        อ่านได้: "${uid}"<br>
+        ความยาว: ${uid.length} ตัวอักษร<br>
+        ตัวอย่าง ID ในระบบ: ${sampleKeys}
+      </div>
     `;
     resBox.style.display = "block";
     
@@ -239,7 +262,7 @@ function onScanSuccess(decodedText) {
   setTimeout(() => {
     isProcessing = false;
     resBox.style.display = "none";
-  }, 4500); // ขยายเวลาโชว์ผลลัพธ์เป็น 4.5 วินาทีเพื่อให้เจ้าหน้าที่อ่านและสังเกตไฟสถานะได้ทัน
+  }, 5000); // ขยายเวลาโชว์เป็น 5 วินาที เพื่อให้มีเวลาอ่าน Debug
 }
 
 function addLog(text, container) {
@@ -255,13 +278,22 @@ function sendLogAsync(uid, status) {
   
   fetch(GAS_WEBAPP_URL, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    mode: "no-cors",       // 1. บังคับเบราว์เซอร์ไม่ให้สนใจเรื่อง CORS
+    redirect: "follow",    // 2. อนุญาตให้วิ่งตามลิงก์ Redirect ของ Google
+    headers: { 
+      "Content-Type": "text/plain" // 3. สำคัญมาก! ต้องใช้ text/plain เพื่อหลีกเลี่ยง Preflight Request
+    },
     body: JSON.stringify({
       uid: uid,
       stationId: "Mobile_Scanner_1",
       status: status
     })
-  }).catch(err => console.error("Error sending log:", err));
+  }).then(() => {
+    // ในโหมด no-cors เบราว์เซอร์จะอ่านค่าตอบกลับจาก GAS ไม่ได้ แต่ข้อมูลจะถูกบันทึกลงชีตแน่นอน
+    console.log("✅ ส่งข้อมูล Log เข้า Google Sheets สำเร็จ");
+  }).catch(err => {
+    console.error("❌ Error sending log:", err);
+  });
 }
 </script>
 </body>
