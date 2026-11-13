@@ -17,13 +17,11 @@
     #reader button { padding: 10px 18px; margin: 6px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 15px; }
     #reader select { padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 90%; font-size: 15px; }
     
-    /* กล่องผลลัพธ์และการจัดไฟสถานะ */
     #result-box { margin-top: 16px; padding: 20px; border-radius: 10px; display: none; text-align: left; font-size: 1.2rem; line-height: 1.7; transition: all 0.3s ease; }
     .success { background: #dcfce7; color: #166534; border: 2px solid #22c55e; }
     .error { background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; }
     .warning { background: #fef08a; color: #854d0e; border: 2px solid #eab308; }
     
-    /* สไตล์ไฟสถานะกระพริบ */
     .status-indicator { display: flex; align-items: center; font-weight: bold; font-size: 1.3rem; margin-bottom: 8px; }
     .dot { height: 16px; width: 16px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); }
     
@@ -36,6 +34,11 @@
     @keyframes pulse-yellow { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
 
     .log-entry { font-family: monospace; font-size: 14px; margin: 6px 0; border-bottom: 1px dashed #e2e8f0; padding-bottom: 6px; }
+
+    /* ปุ่มเสริมควบคุมหน้างาน */
+    .btn-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
+    .btn-sync-now { background: #0284c7; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
+    .btn-clear-cache { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -44,7 +47,6 @@
     <h2>🔒 กรุณายืนยันตัวตน</h2>
     <p style="font-size: 15px; color: #64748b;">ระบบสแกนเช็กอินภาคสนาม</p>
     
-    <!-- 👉 เพิ่มกล่อง Dropdown สำหรับเลือก 10 จุดสแกน -->
     <select id="station-select">
       <option value="Scanner_1">จุดสแกนที่ 1</option>
       <option value="Scanner_2">จุดสแกนที่ 2</option>
@@ -65,6 +67,16 @@
 
   <div class="card" id="scanner-section" style="display:none;">
     <h2>📷 สแกนรหัสคิวอาร์</h2>
+    
+    <!-- แถบควบคุม: เวลาซิงค์, ปุ่มรีเฟรช, และปุ่มล้างแคชเครื่อง -->
+    <div class="btn-group">
+      <span style="color: #0284c7; font-weight: bold;">🕒 <span id="sync-time">-</span></span>
+      <div>
+        <button class="btn-sync-now" onclick="manualForceSync()">⚡ รีเฟรช</button>
+        <button class="btn-clear-cache" onclick="clearLocalCache()">🗑️ ล้างขยะ</button>
+      </div>
+    </div>
+
     <div id="reader"></div>
     <div id="result-box"></div>
     <h3 style="margin-top: 20px; font-size: 16px; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 8px;">ประวัติการสแกนล่าสุด:</h3>
@@ -72,16 +84,16 @@
   </div>
 
 <script>
-// ⚠️ อย่าลืมแก้ URL ตรงนี้ให้เป็นของคุณเอง และมี ?token=... ต่อท้าย
-const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwk_TbXhr4i2HiI4LssWjkH89gD54SIBKIzsHsexE2015q959XSt8Q_6DAnQF2n0jrNmw/exec";
+const GAS_WEBAPP_URL = "ใส่_URL_WEB_APP_ของคุณที่นี่_มี_TOKEN_ด้วย";
 
 let localDatabaseMap = new Map();
 let isProcessing = false;
 let scannerInstance = null;
-let currentStation = "Scanner_Unknown"; // ตัวแปรเก็บจุดสแกน
-
-// โหลดประวัติการสแกนเดิมที่ค้างอยู่ในเครื่อง
+let currentStation = "Scanner_Unknown";
 let scannedSet = new Set(JSON.parse(localStorage.getItem("scannedSet") || "[]"));
+
+let savedPassphrase = "";
+let autoSyncInterval = null;
 
 function hexToBytes(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
 
@@ -100,24 +112,16 @@ async function deriveKey(passphrase, saltHex) {
 
 async function decryptPayload(payload, passphrase) {
   const key = await deriveKey(passphrase, payload.salt);
-  const iv = hexToBytes(payload.iv);
-  const authTag = hexToBytes(payload.authTag);
-  const ciphertext = hexToBytes(payload.ciphertext);
-  
-  const cipherWithTag = new Uint8Array(ciphertext.length + authTag.length);
-  cipherWithTag.set(ciphertext);
-  cipherWithTag.set(authTag, ciphertext.length);
-
-  const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv, tagLength: 128 }, key, cipherWithTag);
+  const cipherWithTag = new Uint8Array(hexToBytes(payload.ciphertext).length + hexToBytes(payload.authTag).length);
+  cipherWithTag.set(hexToBytes(payload.ciphertext));
+  cipherWithTag.set(hexToBytes(payload.authTag), hexToBytes(payload.ciphertext).length);
+  const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hexToBytes(payload.iv), tagLength: 128 }, key, cipherWithTag);
   return JSON.parse(new TextDecoder().decode(decryptedBuffer));
 }
 
 async function initSystem() {
   const passphrase = document.getElementById("passphrase").value.trim();
-  
-  // 👉 รับค่าว่าเครื่องนี้เลือกจุดสแกนหมายเลขอะไร
   currentStation = document.getElementById("station-select").value; 
-  
   const statusEl = document.getElementById("auth-status");
   
   if (!passphrase) { statusEl.innerText = "⚠️ กรุณาพิมพ์รหัสผ่าน"; return; }
@@ -125,10 +129,9 @@ async function initSystem() {
   statusEl.innerText = "⏳ กำลังดาวน์โหลดข้อมูล...";
   
   try {
-    const res = await fetch("data.json?t=" + new Date().getTime(), { cache: "no-store" });
+    const res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
     if (!res.ok) throw new Error("ไม่พบไฟล์ข้อมูล (HTTP " + res.status + ")");
     const payload = await res.json();
-
     if (!payload || !payload.salt) throw new Error("ไฟล์ไม่อยู่ในรูปแบบเข้ารหัส");
     
     statusEl.innerText = "🔐 กำลังถอดรหัสข้อมูล...";
@@ -143,22 +146,80 @@ async function initSystem() {
     localDatabaseMap.clear();
     rawData.forEach(item => {
       let keys = Object.keys(item);
-      let uidKey = keys.find(k => ['ID', 'UID'].includes(k.trim().toUpperCase()))
-        || keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID'))
-        || keys[0];
+      let uidKey = keys.find(k => ['ID', 'UID'].includes(k.trim().toUpperCase())) || keys[0];
       localDatabaseMap.set(String(item[uidKey]).trim(), item);
     });
     
+    savedPassphrase = passphrase;
+    document.getElementById("sync-time").innerText = new Date().toLocaleTimeString('th-TH');
+
     document.getElementById("auth-section").style.display = "none";
     document.getElementById("scanner-section").style.display = "block";
     
     startScanner();
+
+    if (!autoSyncInterval) {
+      autoSyncInterval = setInterval(syncDataBackground, 30000);
+    }
     
   } catch (err) {
-    const wrongKey = err && err.name === "OperationError";
-    const msg = wrongKey ? "รหัสผ่านไม่ตรงกับที่ใช้เข้ารหัส" : (err.message || "ข้อมูลผิดพลาด");
-    statusEl.innerHTML = `<span style="color:red">❌ ${msg}</span>`;
+    statusEl.innerHTML = `<span style="color:red">❌ ${err.message}</span>`;
     document.getElementById("passphrase").value = "";
+  }
+}
+
+async function syncDataBackground() {
+  if (!savedPassphrase) return;
+  try {
+    const res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) return;
+    
+    const payload = await res.json();
+    let rawData = await decryptPayload(payload, savedPassphrase);
+    
+    if (rawData && !Array.isArray(rawData)) rawData = rawData.data || rawData.rows || rawData.records;
+    if (!Array.isArray(rawData)) return;
+
+    let newDatabaseMap = new Map();
+    rawData.forEach(item => {
+      let keys = Object.keys(item);
+      let uidKey = keys.find(k => ['ID', 'UID'].includes(k.trim().toUpperCase())) || keys[0];
+      newDatabaseMap.set(String(item[uidKey]).trim(), item);
+    });
+    
+    localDatabaseMap = newDatabaseMap;
+    document.getElementById("sync-time").innerText = new Date().toLocaleTimeString('th-TH');
+
+    // 👉 Garbage Collection: ล้างตัวแปรขยะในหน่วยความจำเบราว์เซอร์อัตโนมัติ
+    if (window.gc) window.gc();
+
+  } catch (err) {
+    console.error("[Sync Error]:", err);
+  }
+}
+
+async function manualForceSync() {
+  document.getElementById("sync-time").innerText = "กำลังรีเฟรช...";
+  await syncDataBackground();
+  if (autoSyncInterval) {
+    clearInterval(autoSyncInterval);
+    autoSyncInterval = setInterval(syncDataBackground, 30000);
+  }
+}
+
+// 👉 ฟังก์ชันล้างประวัติขยะและหน่วยความจำของเครื่อง (Clear Cache & DOM Logs)
+function clearLocalCache() {
+  if (confirm("⚠️ คุณต้องการล้างประวัติและข้อมูลขยะในเครื่องนี้ใช่หรือไม่?\n(ประวัติการสแกนบนหน้าจอจะถูกเคลียร์เพื่อลดการกินแรม)")) {
+    // 1. ล้างกล่องแสดงผล Logs บนหน้าจอไม่ให้ DOM บวม
+    const recentLogs = document.getElementById("recent-logs");
+    recentLogs.innerHTML = "";
+    
+    // 2. ล้างข้อมูลขยะใน RAM Map ชั่วคราว
+    localDatabaseMap.clear();
+
+    // 3. แจ้งเตือนและบังคับดึงข้อมูลใหม่ทันที
+    alert("🧹 เคลียร์ข้อมูลขยะเรียบร้อยแล้ว ระบบกำลังดึงข้อมูลสดใหม่อีกครั้ง");
+    manualForceSync();
   }
 }
 
@@ -201,12 +262,10 @@ function onScanSuccess(decodedText) {
     const carPlate = record["ทะเบียนรถ"] || "-";
     const countPeople = record["จำนวนคน"] || "1";
     
-    // ตรวจสอบ 2 ชั้น: เช็กที่เครื่อง (Local) หรือ เซิร์ฟเวอร์ (Google)
     const isLocalScanned = scannedSet.has(uid);
     const isServerScanned = record["_isScanned"] === true || record["_isScanned"] === "true";
 
     if (isLocalScanned || isServerScanned) {
-      // ⚠️ กรณีสแกนซ้ำ หรือสวมรอย
       resBox.className = "warning";
       resBox.innerHTML = `
         <div class="status-indicator"><span class="dot dot-yellow"></span> สแกนซ้ำ (เช็กอินแล้ว)</div>
@@ -218,36 +277,28 @@ function onScanSuccess(decodedText) {
         </div>
       `;
       resBox.style.display = "block";
-      
       addLog(`⚠️ ${uid} - สแกนซ้ำ (${name})`, recentLogs);
       sendLogAsync(uid, "DUPLICATE"); 
       
     } else {
-      // ✅ กรณีสแกนผ่านปกติ
       scannedSet.add(uid);
       localStorage.setItem("scannedSet", JSON.stringify(Array.from(scannedSet)));
-      
-      const maskedId = maskIdCard(rawId);
-      const maskedPhone = maskPhone(rawPhone);
       
       resBox.className = "success";
       resBox.innerHTML = `
         <div class="status-indicator"><span class="dot dot-green"></span> พบข้อมูลในระบบ (สำเร็จ)</div>
         <hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
         👤 <b>ชื่อ-นามสกุล:</b> ${name} ${surname}<br>
-        🆔 <b>เลขบัตรประชาชน:</b> ${maskedId}<br>
-        📞 <b>เบอร์โทรศัพท์:</b> ${maskedPhone}<br>
+        🆔 <b>เลขบัตรประชาชน:</b> ${maskIdCard(rawId)}<br>
+        📞 <b>เบอร์โทรศัพท์:</b> ${maskPhone(rawPhone)}<br>
         🚗 <b>ทะเบียนรถ:</b> ${carPlate}<br>
         👥 <b>จำนวนคน:</b> ${countPeople} ท่าน
       `;
       resBox.style.display = "block";
-      
       addLog(`✅ ${uid} - ${name} ${surname}`, recentLogs);
       sendLogAsync(uid, "SUCCESS");
     }
-    
   } else {
-    // ❌ กรณีไม่พบในระบบ
     resBox.className = "error";
     resBox.innerHTML = `
       <div class="status-indicator"><span class="dot dot-red"></span> ไม่พบข้อมูลในระบบ</div>
@@ -256,7 +307,6 @@ function onScanSuccess(decodedText) {
       <span style="font-size: 1rem; color: #b91c1c;">กรุณาตรวจสอบรายชื่อใหม่อีกครั้ง</span>
     `;
     resBox.style.display = "block";
-    
     addLog(`❌ ${uid} - ไม่พบข้อมูล`, recentLogs);
     sendLogAsync(uid, "NOT_FOUND");
   }
@@ -273,17 +323,21 @@ function addLog(text, container) {
   div.className = "log-entry";
   div.innerText = `[${timeStr}] ${text}`;
   container.prepend(div);
+
+  // 👉 ป้องกันหน่วยความจำบวม: หากประวัติแสดงผลเกิน 50 รายการ ให้ตัดรายการเก่าสุดทิ้งทันที
+  const maxLogs = 50;
+  while (container.children.length > maxLogs) {
+    container.removeChild(container.lastChild);
+  }
 }
 
 function sendLogAsync(uid, status) {
   if (GAS_WEBAPP_URL.includes("นำ_WEB_APP_URL")) return;
-  
   fetch(GAS_WEBAPP_URL, {
     method: "POST",
     mode: "no-cors",
     redirect: "follow",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    // 👉 ข้อมูลสถานีที่เลือก จะถูกส่งไป Google Sheets ที่นี่
     body: JSON.stringify({ uid: uid, stationId: currentStation, status: status }) 
   }).catch(err => console.error("Error sending log:", err));
 }
