@@ -244,6 +244,12 @@ function processDashboard(data) {
     let peopleStr = String(row["จำนวนคน"] || "1").replace(/[^0-9]/g, '');
     let peopleNum = parseInt(peopleStr) || 1;
     let isScanned = row["_isScanned"] === true || row["_isScanned"] === "true";
+    
+    // 👉 ดึงชื่อสถานีที่สแกน (ถ้ามีบันทึกไว้ในระบบ เช่น Scanner_1) แปลงชื่อให้ดูอ่านง่ายขึ้น
+    let stationName = row["_station"] || "";
+    if (stationName.startsWith("Scanner_")) {
+      stationName = "จุดที่ " + stationName.replace("Scanner_", "");
+    }
 
     totalPeopleCount += peopleNum;
     if (isScanned) {
@@ -257,9 +263,14 @@ function processDashboard(data) {
 
     // 👉 แสดงผลเฉพาะ 5 รายการล่าสุดเท่านั้น
     if (index < 5) {
-      let statusBadge = isScanned 
-        ? `<span style="background: #166534; color: #4ade80; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">เข้างานแล้ว</span>`
-        : `<span style="background: #334155; color: #94a3b8; padding: 4px 10px; border-radius: 12px; font-size: 12px;">รอดำเนินการ</span>`;
+      let statusBadge = "";
+      if (isScanned) {
+        // แสดงชื่อสถานีต่อท้ายป้าย Check-In (เช่น Check-In (จุดที่ 1))
+        let stationLabel = stationName ? ` (${stationName})` : "";
+        statusBadge = `<span style="background: #166534; color: #4ade80; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">Check-In${stationLabel}</span>`;
+      } else {
+        statusBadge = `<span style="background: #334155; color: #94a3b8; padding: 4px 10px; border-radius: 12px; font-size: 12px;">รอดำเนินการ</span>`;
+      }
         
       guestHtml += `
         <tr>
@@ -305,11 +316,11 @@ function renderDoughnutChart(checkedIn, totalReg) {
   myChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['เช็กอินแล้ว', 'ยังไม่เช็กอิน'],
+      labels: ['Check-In', 'ยังไม่เช็กอิน'],
       datasets: [{
         data: [checkedIn, notCheckedIn],
         backgroundColor: [
-          '#4ade80', // สีเขียว สำหรับคนที่เข้างานแล้ว
+          '#4ade80', // สีเขียว สำหรับคนที่ Check-In แล้ว
           '#334155'  // สีเทา สำหรับคนที่ยังไม่มา
         ],
         borderWidth: 2,
