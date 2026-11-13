@@ -195,8 +195,12 @@ function onScanSuccess(decodedText) {
   const resBox = document.getElementById("result-box");
   const recentLogs = document.getElementById("recent-logs");
   
+  // 👉 ตรวจสอบค่าดิบ (Debugging)
+  console.log("🔍 ค่าจาก QR Code (UID):", uid);
+  
   if (localDatabaseMap.has(uid)) {
     const record = localDatabaseMap.get(uid);
+    console.log("✅ พบข้อมูลจับคู่สำเร็จ:", record);
     
     const name = record["ชื่อ"] || "-";
     const surname = record["นามสกุล"] || "";
@@ -218,6 +222,10 @@ function onScanSuccess(decodedText) {
       📞 <b>เบอร์โทรศัพท์:</b> ${maskedPhone}<br>
       🚗 <b>ทะเบียนรถ:</b> ${carPlate}<br>
       👥 <b>จำนวนคน:</b> ${countPeople} ท่าน
+      <hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
+      <div style="font-size: 0.9rem; color: #166534; font-family: monospace;">
+        [DEBUG] UID: ${uid}
+      </div>
     `;
     resBox.style.display = "block";
     
@@ -225,13 +233,25 @@ function onScanSuccess(decodedText) {
     sendLogAsync(uid, "SUCCESS");
     
   } else {
-    // สถานะไม่พบข้อมูล: แสดงไฟสีแดง
+    // สถานะไม่พบข้อมูล: แสดงไฟสีแดง และโชว์ข้อมูล Debug
     resBox.className = "error";
+    
+    // ดึงค่า Key ทั้งหมดในฐานข้อมูลมาแสดง 3 ค่าแรก เพื่อดูรูปแบบ
+    const keysArray = Array.from(localDatabaseMap.keys());
+    const sampleKeys = keysArray.slice(0, 3).join(", ") || "ไม่มีข้อมูล";
+
     resBox.innerHTML = `
       <div class="status-indicator"><span class="dot dot-red"></span> ไม่พบข้อมูลในระบบ</div>
       <hr style="margin: 8px 0; border:0; border-top:1px solid #fecaca;">
       รหัสที่สแกน: <b>${uid}</b><br>
       <span style="font-size: 1rem; color: #b91c1c;">กรุณาตรวจสอบรายชื่อใหม่อีกครั้ง</span>
+      <hr style="margin: 8px 0; border:0; border-top:1px solid #fecaca;">
+      <div style="font-size: 0.85rem; color: #991b1b; font-family: monospace; word-break: break-all;">
+        [DEBUG INFO]<br>
+        อ่านได้: "${uid}"<br>
+        ความยาว: ${uid.length} ตัวอักษร<br>
+        ตัวอย่าง ID ในระบบ: ${sampleKeys}
+      </div>
     `;
     resBox.style.display = "block";
     
@@ -242,7 +262,7 @@ function onScanSuccess(decodedText) {
   setTimeout(() => {
     isProcessing = false;
     resBox.style.display = "none";
-  }, 4500); // ขยายเวลาโชว์ผลลัพธ์เป็น 4.5 วินาทีเพื่อให้เจ้าหน้าที่อ่านและสังเกตไฟสถานะได้ทัน
+  }, 5000); // ขยายเวลาโชว์เป็น 5 วินาที เพื่อให้มีเวลาอ่าน Debug
 }
 
 function addLog(text, container) {
