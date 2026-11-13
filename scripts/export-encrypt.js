@@ -3,16 +3,17 @@
  * export-encrypt.js
  * ดึงข้อมูลจาก Google Apps Script (GAS) -> เข้ารหัส AES-256-GCM -> บันทึกเป็น data.json
  *
- * ต้องมี env:
- *   GAS_EXPORTER_URL   URL เต็มของ Web App (https://script.google.com/macros/s/.../exec)
+ * Required environment:
+ *   GAS_EXPORTER_URL   URL ของ GAS Web App (หรือ Deployment ID)
  *   MASTER_PASSPHRASE  รหัสผ่านสำหรับเข้ารหัส
  *
- * env เสริม (ไม่ใส่ก็ได้):
- *   OUTPUT_FILE        ชื่อไฟล์ผลลัพธ์ (ค่าเริ่มต้น data.json)
- *   EXPECT_JSON        ตั้งเป็น "false" ถ้าข้อมูลจาก GAS ไม่ใช่ JSON
- *
- * หาก GAS_EXPORTER_URL ยังไม่มี ?token=... ให้ระบุ secret อย่างใดอย่างหนึ่งต่อไปนี้:
+ * Optional token secrets (first non-empty value wins):
  *   GAS_EXPORTER_TOKEN, SECRET_TOKEN, GAS_SECRET_TOKEN, GAS_TOKEN
+ * If a token secret is supplied, it replaces the URL's `token` query parameter.
+ * Otherwise, GAS_EXPORTER_URL must already contain `?token=...`.
+ *
+ * Optional:
+ *   OUTPUT_FILE        ชื่อไฟล์ผลลัพธ์ (ค่าเริ่มต้น data.json)
  */
 
 const crypto = require("crypto");
@@ -20,7 +21,6 @@ const fs = require("fs");
 const https = require("https");
 
 const OUTPUT_FILE = process.env.OUTPUT_FILE || "data.json";
-const EXPECT_JSON = (process.env.EXPECT_JSON || "true").toLowerCase() !== "false";
 const MAX_REDIRECTS = 10;
 const MAX_RETRIES = 3;
 const TIMEOUT_MS = 30000;
@@ -41,9 +41,8 @@ function clean(value) {
 }
 
 function getTokenFromEnv() {
-  const keys = ["GAS_EXPORTER_TOKEN", "SECRET_TOKEN", "GAS_SECRET_TOKEN", "GAS_TOKEN"];
-  for (const key of keys) {
-    const token = clean(process.env[key]);
+  for (const name of ["GAS_EXPORTER_TOKEN", "SECRET_TOKEN", "GAS_SECRET_TOKEN", "GAS_TOKEN"]) {
+    const token = clean(process.env[name]);
     if (token) return token;
   }
   return "";
@@ -54,59 +53,61 @@ function validateConfig() {
   const password = clean(process.env.MASTER_PASSPHRASE);
   const token = getTokenFromEnv();
 
-  if (!rawUrl) fail("GAS_EXPORTER_URL ว่าง - ตรวจชื่อและค่า Secret ใ�� Settings > Secrets and variables > Actions (และ workflow ต้องส่งผ่าน env)");
-  if (!password) fail("MASTER_PASSPHRASE ว่าง - ตรวจ Secret และการส่งค่าผ่าน env ใน workflow");
+  if (!rawUrl) fail("GAS_EXPORTER_URL ว่าง - ตรวจ Repository Secret และการส่งค่า env ใน workflow");
+  if (!password) fail("MASTER_PASSPHRASE ว่าง - ตรวจ Repository Secret และการส่งค่า env ใน workflow");
 
   let normalized = rawUrl;
-  if (!/^https?:\/\//i.test(normalized)) {
-    if (/^script\.google\.com\//i.test(normalized)) {
-      normalized = "https://" + normalized;
-    } else if (/^[A-Za-z0-9_-]{20,}$/.test(normalized)) {
-      normalized = "https://script.google.com/macros/s/" + normalized + "/exec";
-    } else {
-      normalized = "https://" + normalized;
-    }
+  if (/^script\.google\.com\//i.test(normalized)) {
+    normalized = "https://" + normalized;
+  } else if (!/^https?:\/\//i.test(normalized) && /^[A-Za-z0-9_-]{20,}$/.test(normalized)) {
+    normalized = "https://script.google.com/macros/s/" + normalized + "/exec";
   }
 
-  let parsed;
+  let url;
   try {
-    parsed = new URL(normalized);
+    url = new URL(normalized);
   } catch {
-    fail("GAS_EXPORTER_URL ไม่ใช่ URL ที่ถูกต้อง (ต้องขึ้นต้นด้วย https:// และเป็น URL เต็มของ Web App ของ Google Apps Script)");
+    fail("GAS_EXPORTER_URL ไม่ใช่ URL ที่ถูกต้อง (ใช้ URL เต็มของ Web App หรือ Deployment ID)");
   }
 
-  if (parsed.protocol !== "https:") fail("GAS_EXPORTER_URL ต้องเป็น https:// เท่านั้น");
-  if (!/(^|\.)google(usercontent)?\.com$/.test(parsed.hostname)) {
-    console.warn("WARN: โดเมน " + parsed.hostname + " ไม่ใช่ของ Google - ตรวจสอบว่าตั้งค่า URL ถูกต้อง");
+  if (url.protocol !== "https:") fail("GAS_EXPORTER_URL ต้องเป็น https:// เท่านั้น");
+  if (!/(^|\.)google(usercontent)?\.com$/.test(url.hostname)) {
+    fail("GAS_EXPORTER_URL ต้องเป็นโดเมนของ Google Apps Script (script.google.com)");
   }
 
-  if (!parsed.searchParams.has("token") && !parsed.searchParams.has("key") && token) {
-    parsed.searchParams.set("token", token);
+  // ถ้าระบุ token secret ให้ใช้ค่านั้นเป็นค่าหลัก เพื่อป้องกัน URL มี token เก่าหรือไม่ตรงกัน
+  if (token) url.searchParams.set("token", token);
+  if (!url.searchParams.get("token")) {
+    fail("ไม่พบ token: เพิ่ม ?token=... ใน GAS_EXPORTER_URL หรือกำหนด Secret GAS_EXPORTER_TOKEN");
   }
 
-  if (!parsed.searchParams.has("token") && !parsed.searchParams.has("key")) {
-    fail("GAS_EXPORTER_URL ต้องมี ?token=... หรือกำหนด secret ชื่อ GAS_EXPORTER_TOKEN / SECRET_TOKEN / GAS_SECRET_TOKEN / GAS_TOKEN");
-  }
-
-  return { url: parsed.href, password };
+  return { url: url.href, password };
 }
 
 function fetchOnce(target, redirects = 0) {
   return new Promise((resolve, reject) => {
-    if (redirects > MAX_REDIRECTS) return reject(Object.assign(new Error("redirect เกิน " + MAX_REDIRECTS + " ครั้ง"), { fatal: true }));
+    if (redirects > MAX_REDIRECTS) {
+      return reject(Object.assign(new Error("redirect เกิน " + MAX_REDIRECTS + " ครั้ง"), { fatal: true }));
+    }
 
-    const req = https.get(target, { headers: { "User-Agent": "export-encrypt/1.0", Accept: "application/json, text/plain, */*" } }, (res) => {
+    const req = https.get(target, {
+      headers: {
+        "User-Agent": "export-encrypt/1.0",
+        Accept: "application/json, text/plain, */*",
+      },
+    }, (res) => {
       const code = res.statusCode || 0;
 
       if (code >= 300 && code < 400 && res.headers.location) {
         res.resume();
         let next;
         try {
-          next = new URL(res.headers.location, target).href;
+          next = new URL(res.headers.location, target);
+          if (next.protocol !== "https:") throw new Error("redirect ต้องเป็น HTTPS");
         } catch {
-          return reject(Object.assign(new Error("Location header ไม่ถูกต้อง"), { fatal: true }));
+          return reject(Object.assign(new Error("Location header ไม่ถูกต้องหรือไม่ปลอดภัย"), { fatal: true }));
         }
-        return resolve(fetchOnce(next, redirects + 1));
+        return resolve(fetchOnce(next.href, redirects + 1));
       }
 
       if (code !== 200) {
@@ -117,13 +118,13 @@ function fetchOnce(target, redirects = 0) {
 
       const chunks = [];
       let size = 0;
-      res.on("data", (c) => {
-        size += c.length;
+      res.on("data", (chunk) => {
+        size += chunk.length;
         if (size > MAX_BYTES) {
           req.destroy(Object.assign(new Error("ข้อมูลใหญ่เกิน " + MAX_BYTES + " bytes"), { fatal: true }));
           return;
         }
-        chunks.push(c);
+        chunks.push(chunk);
       });
       res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
       res.on("error", reject);
@@ -144,7 +145,7 @@ async function fetchWithRetry(url) {
       if (err.fatal || attempt === MAX_RETRIES) break;
       const wait = 2000 * attempt;
       console.warn("ครั้งที่ " + attempt + " ล้มเหลว (" + err.message + ") - ลองใหม่ใน " + wait / 1000 + " วินาที");
-      await new Promise((r) => setTimeout(r, wait));
+      await new Promise((resolve) => setTimeout(resolve, wait));
     }
   }
   throw lastErr;
@@ -153,18 +154,26 @@ async function fetchWithRetry(url) {
 function validatePayload(text) {
   const body = text.replace(/^\uFEFF/, "").trim();
   if (!body) fail("GAS ตอบกลับมาเป็นค่าว่าง");
-
   if (/^<(!doctype|html)/i.test(body)) {
-    fail("GAS ตอบกลับเป็นหน้า HTML (น่าจะเป็นหน้า login หรือหน้า error ของ Google) - ตรวจว่า Deploy เป็น Web App และตั้ง Who has access เป็น Anyone");
+    fail("GAS ตอบกลับเป็นหน้า HTML (อาจเป็นหน้า login/error) - ตรวจการ Deploy และสิทธิ์ Web App");
   }
 
-  if (EXPECT_JSON) {
-    try {
-      JSON.parse(body);
-    } catch {
-      fail("ข้อมูลจาก GAS ไม่ใช่ JSON ที่ถูกต้อง (ถ้าตั้งใจให้เป็นข้อความธรรมดา ให้ตั้ง EXPECT_JSON=false)");
-    }
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    fail("ข้อมูลจาก GAS ไม่ใช่ JSON ที่ถูกต้อง - ตรวจ URL และรูปแบบคำตอบจาก Apps Script");
   }
+
+  // อย่าเข้ารหัสข้อความ error เป็น data.json ที่ดูเหมือนสำเร็จ
+  if (parsed && !Array.isArray(parsed) && parsed.error) {
+    fail("GAS ปฏิเสธคำขอ: " + String(parsed.error) + " - ตรวจว่า token ตรงกับ SECRET_TOKEN ใน Apps Script และ Web App อนุญาตให้เรียกใช้งาน");
+  }
+  if (!Array.isArray(parsed)) {
+    fail("ข้อมูลจาก GAS ไม่ใช่รายการ (array) ตามรูปแบบที่หน้าเว็บต้องการ");
+  }
+  if (parsed.length === 0) console.warn("WARN: ข้อมูลจาก GAS เป็นรายการว่าง");
+
   return body;
 }
 
@@ -200,10 +209,9 @@ function writeAtomic(file, content) {
 
 async function main() {
   const { url, password } = validateConfig();
-  console.log("กำลังดึงข้อมูลจาก " + new URL(url).hostname + " ...");
+  console.log("กำลังดึงข้อมูลจาก Google Apps Script ...");
 
-  const raw = await fetchWithRetry(url);
-  const body = validatePayload(raw);
+  const body = validatePayload(await fetchWithRetry(url));
   console.log("ได้ข้อมูล " + Buffer.byteLength(body, "utf8") + " bytes");
 
   const payload = encrypt(body, password);
