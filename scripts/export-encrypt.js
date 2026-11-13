@@ -10,6 +10,9 @@
  * env เสริม (ไม่ใส่ก็ได้):
  *   OUTPUT_FILE        ชื่อไฟล์ผลลัพธ์ (ค่าเริ่มต้น data.json)
  *   EXPECT_JSON        ตั้งเป็น "false" ถ้าข้อมูลจาก GAS ไม่ใช่ JSON
+ *
+ * หาก GAS_EXPORTER_URL ยังไม่มี ?token=... ให้ระบุ secret อย่างใดอย่างหนึ่งต่อไปนี้:
+ *   GAS_EXPORTER_TOKEN, SECRET_TOKEN, GAS_SECRET_TOKEN, GAS_TOKEN
  */
 
 const crypto = require("crypto");
@@ -29,7 +32,6 @@ function fail(msg) {
   process.exit(1);
 }
 
-// ตัด BOM, ช่องว่าง, ขึ้นบรรทัดใหม่ และเครื่องหมายคำพูดที่ครอบอยู่ทั้งสองฝั่ง
 function clean(value) {
   let v = String(value || "").replace(/^\uFEFF/, "").trim();
   if (v.length >= 2 && ((v[0] === '"' && v.at(-1) === '"') || (v[0] === "'" && v.at(-1) === "'"))) {
@@ -38,23 +40,54 @@ function clean(value) {
   return v;
 }
 
-function validateConfig() {
-  const url = clean(process.env.GAS_EXPORTER_URL);
-  const password = clean(process.env.MASTER_PASSPHRASE);
+function getTokenFromEnv() {
+  const keys = ["GAS_EXPORTER_TOKEN", "SECRET_TOKEN", "GAS_SECRET_TOKEN", "GAS_TOKEN"];
+  for (const key of keys) {
+    const token = clean(process.env[key]);
+    if (token) return token;
+  }
+  return "";
+}
 
-  if (!url) fail("GAS_EXPORTER_URL ว่าง - ตรวจชื่อและค่า Secret ใน Settings > Secrets and variables > Actions (และ workflow ต้องส่งผ่าน env: ${{ secrets.GAS_EXPORTER_URL }})");
+function validateConfig() {
+  const rawUrl = clean(process.env.GAS_EXPORTER_URL);
+  const password = clean(process.env.MASTER_PASSPHRASE);
+  const token = getTokenFromEnv();
+
+  if (!rawUrl) fail("GAS_EXPORTER_URL ว่าง - ตรวจชื่อและค่า Secret ใ�� Settings > Secrets and variables > Actions (และ workflow ต้องส่งผ่าน env)");
   if (!password) fail("MASTER_PASSPHRASE ว่าง - ตรวจ Secret และการส่งค่าผ่าน env ใน workflow");
+
+  let normalized = rawUrl;
+  if (!/^https?:\/\//i.test(normalized)) {
+    if (/^script\.google\.com\//i.test(normalized)) {
+      normalized = "https://" + normalized;
+    } else if (/^[A-Za-z0-9_-]{20,}$/.test(normalized)) {
+      normalized = "https://script.google.com/macros/s/" + normalized + "/exec";
+    } else {
+      normalized = "https://" + normalized;
+    }
+  }
 
   let parsed;
   try {
-    parsed = new URL(url);
+    parsed = new URL(normalized);
   } catch {
-    fail("GAS_EXPORTER_URL ไม่ใช่ URL ที่ถูกต้อง (ต้องขึ้นต้นด้วย https:// และเป็น URL เต็มของ Web App ไม่ใช่แค่ Deployment ID)");
+    fail("GAS_EXPORTER_URL ไม่ใช่ URL ที่ถูกต้อง (ต้องขึ้นต้นด้วย https:// และเป็น URL เต็มของ Web App ของ Google Apps Script)");
   }
+
   if (parsed.protocol !== "https:") fail("GAS_EXPORTER_URL ต้องเป็น https:// เท่านั้น");
   if (!/(^|\.)google(usercontent)?\.com$/.test(parsed.hostname)) {
     console.warn("WARN: โดเมน " + parsed.hostname + " ไม่ใช่ของ Google - ตรวจสอบว่าตั้งค่า URL ถูกต้อง");
   }
+
+  if (!parsed.searchParams.has("token") && !parsed.searchParams.has("key") && token) {
+    parsed.searchParams.set("token", token);
+  }
+
+  if (!parsed.searchParams.has("token") && !parsed.searchParams.has("key")) {
+    fail("GAS_EXPORTER_URL ต้องมี ?token=... หรือกำหนด secret ชื่อ GAS_EXPORTER_TOKEN / SECRET_TOKEN / GAS_SECRET_TOKEN / GAS_TOKEN");
+  }
+
   return { url: parsed.href, password };
 }
 
@@ -69,7 +102,7 @@ function fetchOnce(target, redirects = 0) {
         res.resume();
         let next;
         try {
-          next = new URL(res.headers.location, target).href; // รองรับ redirect แบบ path สัมพัทธ์
+          next = new URL(res.headers.location, target).href;
         } catch {
           return reject(Object.assign(new Error("Location header ไม่ถูกต้อง"), { fatal: true }));
         }
@@ -78,7 +111,6 @@ function fetchOnce(target, redirects = 0) {
 
       if (code !== 200) {
         res.resume();
-        // 4xx = ผิดที่ฝั่งเรา (สิทธิ์/URL) ไม่ต้อง retry, 5xx/429 retry ได้
         const retryable = code >= 500 || code === 429;
         return reject(Object.assign(new Error("HTTP " + code), { fatal: !retryable }));
       }
@@ -123,7 +155,7 @@ function validatePayload(text) {
   if (!body) fail("GAS ตอบกลับมาเป็นค่าว่าง");
 
   if (/^<(!doctype|html)/i.test(body)) {
-    fail("GAS ตอบกลับเป็นหน้า HTML (น่าจะเป็นหน้า login หรือหน้า error ของ Google) - ตรวจว่า Deploy เป็น Web App และตั้ง 'Who has access' เป็น Anyone");
+    fail("GAS ตอบกลับเป็นหน้า HTML (น่าจะเป็นหน้า login หรือหน้า error ของ Google) - ตรวจว่า Deploy เป็น Web App และตั้ง Who has access เป็น Anyone");
   }
 
   if (EXPECT_JSON) {
@@ -151,7 +183,6 @@ function encrypt(plain, password) {
   };
 }
 
-// ทดสอบถอดรหัสกลับทันที เพื่อให้แน่ใจว่าไฟล์ที่เขียนใช้งานได้จริง
 function verify(payload, password, expected) {
   const key = crypto.pbkdf2Sync(password, Buffer.from(payload.salt, "hex"), PBKDF2_ITERATIONS, 32, "sha256");
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(payload.iv, "hex"));
@@ -161,7 +192,6 @@ function verify(payload, password, expected) {
   return out === expected;
 }
 
-// เขียนไฟล์แบบ atomic: เขียนไฟล์ชั่วคราวก่อนแล้วค่อยเปลี่ยนชื่อ กันไฟล์เสียครึ่งๆ กลางๆ
 function writeAtomic(file, content) {
   const tmp = file + ".tmp";
   fs.writeFileSync(tmp, content);
