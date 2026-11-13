@@ -2,14 +2,14 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - กองบิน 46 พิษณุโลก (Outdoor High-Contrast)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dashboard - กองบิน 46 พิษณุโลก (Responsive Outdoor)</title>
   <!-- โหลดไลบรารี Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { 
       --bg-space: #030712; 
-      --card-bg: rgba(15, 23, 42, 0.85); 
+      --card-bg: rgba(15, 23, 42, 0.9); 
       --border-glow: rgba(56, 189, 248, 0.4); 
       --text-main: #f8fafc; 
       --text-muted: #94a3b8; 
@@ -17,58 +17,74 @@
       --accent-green: #4ade80;
     }
     * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-space); color: var(--text-main); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-space); color: var(--text-main); margin: 0; padding: 10px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     
-    /* กรอบ 16:9 สไตล์เรืองแสงสู้แสงจ้า */
-    .dashboard-container { width: 100%; max-width: 1700px; aspect-ratio: 16 / 9; background: radial-gradient(circle at top, #1e293b 0%, #030712 100%); border-radius: 20px; padding: 28px; box-shadow: 0 0 50px rgba(56, 189, 248, 0.15), inset 0 0 20px rgba(56, 189, 248, 0.05); display: flex; flex-direction: column; border: 2px solid var(--border-glow); }
+    /* Responsive Container: ยืดหยุ่นตามหน้าจอ ไม่ตกขอบ */
+    .dashboard-container { 
+      width: 100%; 
+      max-width: 1700px; 
+      min-height: 95vh;
+      background: radial-gradient(circle at top, #1e293b 0%, #030712 100%); 
+      border-radius: 16px; 
+      padding: 16px; 
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.15); 
+      display: flex; 
+      flex-direction: column; 
+      border: 2px solid var(--border-glow); 
+    }
     
-    /* ส่วนหัว: โลโก้ LOGO.png และชื่อหน่วยงาน */
-    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(56, 189, 248, 0.3); padding-bottom: 15px; margin-bottom: 20px; }
-    .logo-title { display: flex; align-items: center; gap: 20px; }
-    .logo-title img { height: 80px; width: auto; border-radius: 10px; box-shadow: 0 0 15px rgba(56, 189, 248, 0.5); border: 1px solid var(--accent-blue); }
-    .header h1 { margin: 0; font-size: 2.5rem; color: #ffffff; font-weight: 900; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); letter-spacing: 1px; }
+    /* ส่วนหัว: โลโก้และชื่อหน่วยงาน */
+    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(56, 189, 248, 0.3); padding-bottom: 12px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .logo-title { display: flex; align-items: center; gap: 15px; }
+    .logo-title img { height: 60px; width: auto; border-radius: 8px; box-shadow: 0 0 12px rgba(56, 189, 248, 0.5); border: 1px solid var(--accent-blue); }
+    .header h1 { margin: 0; font-size: clamp(1.5rem, 2.5vw, 2.3rem); color: #ffffff; font-weight: 900; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
 
     /* หน้าจอ Login สำหรับแอดมิน */
-    #login-section { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
-    #login-section input { width: 450px; padding: 18px; margin-bottom: 15px; border-radius: 10px; border: 2px solid var(--accent-blue); background: #0b0f19; color: white; font-size: 22px; text-align: center; box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); }
-    #login-section button { width: 450px; padding: 18px; border-radius: 10px; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; font-size: 22px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(14, 165, 233, 0.4); }
-    #login-section button:hover { background: linear-gradient(135deg, #0284c7, #0369a1); }
+    #login-section { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; }
+    #login-section input { width: 100%; max-width: 400px; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 2px solid var(--accent-blue); background: #0b0f19; color: white; font-size: 18px; text-align: center; }
+    #login-section button { width: 100%; max-width: 400px; padding: 15px; border-radius: 10px; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; font-size: 18px; font-weight: bold; cursor: pointer; }
 
-    /* โครงสร้างหลัก 2 ฝั่ง (16:9 Split Layout) */
-    .main-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; flex: 1; overflow: hidden; }
-    .column { display: flex; flex-direction: column; gap: 20px; height: 100%; }
+    /* โครงสร้าง Responsive Grid (คอมพิวเตอร์แสดง 2 คอลัมน์ / มือถือแสดงคอลัมน์เดียว) */
+    .main-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; flex: 1; }
+    @media (max-width: 1024px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .dashboard-container { height: auto; }
+    }
+
+    .column { display: flex; flex-direction: column; gap: 16px; }
     
-    /* การ์ดสไตล์กระจกเรืองแสง (Glassmorphism) */
-    .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 14px; padding: 22px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); display: flex; flex-direction: column; }
-    .card h3 { margin: 0 0 15px 0; font-size: 1.4rem; color: #38bdf8; border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 8px; font-weight: 700; text-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+    /* การ์ดสไตล์กระจกเรืองแสง */
+    .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 12px; padding: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); display: flex; flex-direction: column; }
+    .card h3 { margin: 0 0 12px 0; font-size: 1.2rem; color: #38bdf8; border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 6px; font-weight: 700; }
 
-    /* กล่องสถิติตัวเลขด้านบนฝั่งซ้าย */
-    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .stat-box { background: rgba(15, 23, 42, 0.9); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.05); }
-    .stat-title { font-size: 1.1rem; color: var(--text-muted); font-weight: bold; }
-    .stat-value { font-size: 3.2rem; font-weight: 900; color: #38bdf8; margin-top: 5px; text-shadow: 0 0 12px rgba(56, 189, 248, 0.4); }
-    .stat-value.success { color: #4ade80; text-shadow: 0 0 12px rgba(74, 222, 128, 0.4); }
+    /* กล่องสถิติตัวเลข */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-box { background: rgba(15, 23, 42, 0.9); padding: 12px; border-radius: 8px; text-align: center; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .stat-title { font-size: 0.95rem; color: var(--text-muted); font-weight: bold; }
+    .stat-value { font-size: clamp(2rem, 3vw, 3rem); font-weight: 900; color: #38bdf8; margin-top: 5px; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
+    .stat-value.success { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
 
-    /* พื้นที่กราฟโดนัทฝั่งซ้าย */
-    .chart-container { position: relative; flex: 1; min-height: 220px; display: flex; justify-content: center; align-items: center; }
+    /* พื้นที่กราฟโดนัท */
+    .chart-container { position: relative; width: 100%; height: 240px; display: flex; justify-content: center; align-items: center; }
 
-    /* ตารางข้อมูลฝั่งขวา */
-    table { width: 100%; border-collapse: collapse; font-size: 1.1rem; }
-    th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid rgba(56, 189, 248, 0.15); }
-    th { background: rgba(15, 23, 42, 0.95); color: #38bdf8; font-size: 1.1rem; font-weight: bold; }
+    /* ตารางข้อมูล Responsive */
+    .table-responsive { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; white-space: nowrap; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(56, 189, 248, 0.15); }
+    th { background: rgba(15, 23, 42, 0.95); color: #38bdf8; font-weight: bold; }
     td { color: #f1f5f9; }
 
-    .pdpa-notice { font-size: 0.95rem; color: #fca5a5; background: rgba(127, 29, 29, 0.3); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid rgba(153, 27, 27, 0.5); margin-top: auto; }
+    .pdpa-notice { font-size: 0.85rem; color: #fca5a5; background: rgba(127, 29, 29, 0.3); padding: 8px; border-radius: 6px; text-align: center; border: 1px solid rgba(153, 27, 27, 0.5); margin-top: 12px; }
     
-    /* ควบคุมแถบรีเฟรช */
-    .refresh-badge { font-size: 1rem; color: #38bdf8; background: rgba(3, 105, 161, 0.3); padding: 8px 16px; border-radius: 20px; border: 1px solid #0284c7; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 10px rgba(2, 132, 199, 0.3); }
+    /* แถบรีเฟรช */
+    .refresh-badge { font-size: 0.9rem; color: #38bdf8; background: rgba(3, 105, 161, 0.3); padding: 6px 12px; border-radius: 20px; border: 1px solid #0284c7; display: flex; align-items: center; gap: 6px; }
   </style>
 </head>
 <body>
 
 <div class="dashboard-container">
   
-  <!-- ส่วนหัว (Header) พร้อมโลโก้ LOGO.png -->
+  <!-- ส่วนหัว -->
   <div class="header">
     <div class="logo-title">
       <img src="LOGO.png" alt="Logo Wing 46">
@@ -83,19 +99,19 @@
     </div>
   </div>
 
-  <!-- หน้าจอ Login สำหรับแอดมิน -->
+  <!-- หน้าจอ Login -->
   <div id="login-section" class="card" style="flex:1;">
-    <h2 style="color: #38bdf8; font-size: 2.2rem; margin-top:0; text-shadow: 0 0 10px rgba(56,189,248,0.4);">🔒 ยืนยันสิทธิ์ผู้ดูแลระบบ</h2>
-    <p style="color: var(--text-muted); font-size: 1.2rem; margin-bottom: 25px;">กรุณากรอกรหัสผ่านหลักเพื่อเปิดใช้งานแดชบอร์ด</p>
+    <h2 style="color: #38bdf8; font-size: 1.8rem; margin-top:0;">🔒 ยืนยันสิทธิ์ผู้ดูแลระบบ</h2>
+    <p style="color: var(--text-muted); font-size: 1rem; margin-bottom: 20px;">กรุณากรอกรหัสผ่านหลักเพื่อเปิดใช้งานแดชบอร์ด</p>
     <input type="password" id="passphrase" placeholder="MASTER PASSPHRASE">
     <button onclick="loadData()">เข้าสู่ระบบ Dashboard</button>
-    <div id="status" style="margin-top: 15px; color: #ef4444; font-size: 1.2rem; font-weight: bold;"></div>
+    <div id="status" style="margin-top: 15px; color: #ef4444; font-size: 1rem; font-weight: bold;"></div>
   </div>
 
-  <!-- เนื้อหาหลัก 2 ฝั่ง (ซ้าย-ขวา) เมื่อล็อกอินสำเร็จ -->
+  <!-- เนื้อหาหลัก 2 ฝั่ง (Responsive Grid) -->
   <div id="dashboard-section" class="main-grid" style="display:none;">
     
-    <!-- 📌 ฝั่งซ้าย: กราฟโดนัทเรืองแสงและตัวเลขรวม -->
+    <!-- ฝั่งซ้าย -->
     <div class="column">
       <div class="card">
         <div class="stat-grid">
@@ -118,12 +134,11 @@
       </div>
     </div>
 
-    <!-- 📌 ฝั่งขวา: สถิติรถ และ 5 รายการล่าสุด -->
+    <!-- ฝั่งขวา -->
     <div class="column">
-      <!-- สถิติประเภทรถอยู่ด้านบน -->
       <div class="card">
         <h3>🚗 สถิติประเภทรถที่ลงทะเบียน</h3>
-        <div style="max-height: 180px; overflow-y: auto;">
+        <div class="table-responsive" style="max-height: 160px; overflow-y: auto;">
           <table id="vehicle-table">
             <thead>
               <tr>
@@ -138,25 +153,26 @@
         </div>
       </div>
 
-      <!-- รายชื่อผู้เข้าร่วมล่าสุด (แสดงแค่ 5 รายการล่าสุด พร้อมชื่อสถานี) อยู่ด้านล่าง -->
       <div class="card" style="flex: 1;">
         <h3>👥 5 รายการผู้เข้าร่วมล่าสุด (PDPA Masked)</h3>
-        <table id="guest-table">
-          <thead>
-            <tr>
-              <th>รหัส (UID)</th>
-              <th>ชื่อ - นามสกุล</th>
-              <th style="text-align: center;">มาด้วยกัน</th>
-              <th style="text-align: center;">สถานะ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- ข้อมูลรายชื่อ 5 คนล่าสุด -->
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table id="guest-table">
+            <thead>
+              <tr>
+                <th>รหัส (UID)</th>
+                <th>ชื่อ - นามสกุล</th>
+                <th style="text-align: center;">มาด้วยกัน</th>
+                <th style="text-align: center;">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- ข้อมูลรายชื่อ 5 คนล่าสุด -->
+            </tbody>
+          </table>
+        </div>
         
         <div class="pdpa-notice">
-          🔒 <b>PDPA Compliant:</b> ข้อมูลส่วนบุคคลถูกเข้ารหัสและปกปิดชื่อบางส่วนเพื่อความปลอดภัยตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล
+          🔒 <b>PDPA Compliant:</b> ข้อมูลส่วนบุคคลถูกเข้ารหัสและปกปิดชื่อบางส่วนตามกฎหมาย
         </div>
       </div>
     </div>
@@ -224,7 +240,7 @@ async function loadData() {
     document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString('th-TH');
 
     if (!autoRefreshInterval) {
-      autoRefreshInterval = setInterval(loadData, 60000); // รีเฟรชอัตโนมัติทุก 1 นาที
+      autoRefreshInterval = setInterval(loadData, 60000);
     }
     
   } catch(e) {
@@ -273,9 +289,9 @@ function processDashboard(data) {
       let statusBadge = "";
       if (isScanned) {
         let stationLabel = stationName ? ` (${stationName})` : "";
-        statusBadge = `<span style="background: rgba(22, 101, 52, 0.8); color: #4ade80; padding: 6px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; border: 1px solid rgba(74, 222, 128, 0.3);">Check-In${stationLabel}</span>`;
+        statusBadge = `<span style="background: rgba(22, 101, 52, 0.8); color: #4ade80; padding: 4px 8px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; border: 1px solid rgba(74, 222, 128, 0.3);">Check-In${stationLabel}</span>`;
       } else {
-        statusBadge = `<span style="background: rgba(51, 65, 85, 0.8); color: #94a3b8; padding: 6px 12px; border-radius: 12px; font-size: 13px;">รอดำเนินการ</span>`;
+        statusBadge = `<span style="background: rgba(51, 65, 85, 0.8); color: #94a3b8; padding: 4px 8px; border-radius: 8px; font-size: 0.85rem;">รอดำเนินการ</span>`;
       }
         
       guestHtml += `
@@ -324,8 +340,8 @@ function renderDoughnutChart(checkedIn, totalReg) {
       datasets: [{
         data: [checkedIn, notCheckedIn],
         backgroundColor: [
-          '#4ade80', // สีเขียวสว่างสู้แสง
-          '#1e293b'  // สีน้ำเงินเข้มขอบตัด
+          '#4ade80', 
+          '#1e293b'  
         ],
         borderWidth: 3,
         borderColor: '#0f172a',
@@ -346,8 +362,8 @@ function renderDoughnutChart(checkedIn, totalReg) {
           position: 'bottom',
           labels: {
             color: '#f8fafc',
-            font: { size: 16, weight: 'bold' },
-            padding: 20
+            font: { size: 14, weight: 'bold' },
+            padding: 15
           }
         }
       },
