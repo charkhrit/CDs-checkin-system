@@ -35,9 +35,10 @@
 
     .log-entry { font-family: monospace; font-size: 14px; margin: 6px 0; border-bottom: 1px dashed #e2e8f0; padding-bottom: 6px; }
 
-    /* สไตล์ปุ่มรีเฟรชด่วน */
-    .btn-sync-now { background: #0284c7; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; margin-left: 5px; }
-    .btn-sync-now:active { background: #0369a1; transform: scale(0.95); }
+    /* ปุ่มเสริมควบคุมหน้างาน */
+    .btn-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
+    .btn-sync-now { background: #0284c7; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
+    .btn-clear-cache { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -67,10 +68,13 @@
   <div class="card" id="scanner-section" style="display:none;">
     <h2>📷 สแกนรหัสคิวอาร์</h2>
     
-    <!-- แถบแสดงเวลา และปุ่มกดบังคับรีเฟรชทันที -->
-    <div id="sync-status" style="font-size: 12px; color: #0284c7; text-align: right; margin-bottom: 8px; font-weight: bold; display: flex; justify-content: flex-end; align-items: center;">
-      <span>🔄 อัปเดตทุก 30วิ | ล่าสุด: <span id="sync-time">-</span></span>
-      <button class="btn-sync-now" onclick="manualForceSync()">⚡ รีเฟรชตอนนี้</button>
+    <!-- แถบควบคุม: เวลาซิงค์, ปุ่มรีเฟรช, และปุ่มล้างแคชเครื่อง -->
+    <div class="btn-group">
+      <span style="color: #0284c7; font-weight: bold;">🕒 <span id="sync-time">-</span></span>
+      <div>
+        <button class="btn-sync-now" onclick="manualForceSync()">⚡ รีเฟรช</button>
+        <button class="btn-clear-cache" onclick="clearLocalCache()">🗑️ ล้างขยะ</button>
+      </div>
     </div>
 
     <div id="reader"></div>
@@ -80,7 +84,6 @@
   </div>
 
 <script>
-// ⚠️ เปลี่ยน URL ตรงนี้ให้เป็นของคุณเอง
 const GAS_WEBAPP_URL = "ใส่_URL_WEB_APP_ของคุณที่นี่_มี_TOKEN_ด้วย";
 
 let localDatabaseMap = new Map();
@@ -155,7 +158,6 @@ async function initSystem() {
     
     startScanner();
 
-    // ตั้งเวลาดึงข้อมูลอัตโนมัติทุก 30 วินาที
     if (!autoSyncInterval) {
       autoSyncInterval = setInterval(syncDataBackground, 30000);
     }
@@ -166,7 +168,6 @@ async function initSystem() {
   }
 }
 
-// ฟังก์ชันดึงข้อมูลพื้นหลัง (ใช้ร่วมกันทั้งแบบ Auto และกดปุ่ม)
 async function syncDataBackground() {
   if (!savedPassphrase) return;
   try {
@@ -188,24 +189,37 @@ async function syncDataBackground() {
     
     localDatabaseMap = newDatabaseMap;
     document.getElementById("sync-time").innerText = new Date().toLocaleTimeString('th-TH');
-    console.log("[Sync Success] อัปเดตข้อมูลสำเร็จ จำนวน:", localDatabaseMap.size);
+
+    // 👉 Garbage Collection: ล้างตัวแปรขยะในหน่วยความจำเบราว์เซอร์อัตโนมัติ
+    if (window.gc) window.gc();
 
   } catch (err) {
     console.error("[Sync Error]:", err);
   }
 }
 
-// 👉 ฟังก์ชันสำหรับปุ่ม "รีเฟรชตอนนี้" (Force Sync + รีเซ็ตเวลาจับเวลา)
 async function manualForceSync() {
-  const syncTimeEl = document.getElementById("sync-time");
-  syncTimeEl.innerText = "กำลังรีเฟรช...";
-  
+  document.getElementById("sync-time").innerText = "กำลังรีเฟรช...";
   await syncDataBackground();
-  
-  // รีเซ็ตตัวนับเวลา 30 วินาทีใหม่ เพื่อไม่ให้มันตีกับรอบถัดไปเร็วเกินไป
   if (autoSyncInterval) {
     clearInterval(autoSyncInterval);
     autoSyncInterval = setInterval(syncDataBackground, 30000);
+  }
+}
+
+// 👉 ฟังก์ชันล้างประวัติขยะและหน่วยความจำของเครื่อง (Clear Cache & DOM Logs)
+function clearLocalCache() {
+  if (confirm("⚠️ คุณต้องการล้างประวัติและข้อมูลขยะในเครื่องนี้ใช่หรือไม่?\n(ประวัติการสแกนบนหน้าจอจะถูกเคลียร์เพื่อลดการกินแรม)")) {
+    // 1. ล้างกล่องแสดงผล Logs บนหน้าจอไม่ให้ DOM บวม
+    const recentLogs = document.getElementById("recent-logs");
+    recentLogs.innerHTML = "";
+    
+    // 2. ล้างข้อมูลขยะใน RAM Map ชั่วคราว
+    localDatabaseMap.clear();
+
+    // 3. แจ้งเตือนและบังคับดึงข้อมูลใหม่ทันที
+    alert("🧹 เคลียร์ข้อมูลขยะเรียบร้อยแล้ว ระบบกำลังดึงข้อมูลสดใหม่อีกครั้ง");
+    manualForceSync();
   }
 }
 
@@ -309,6 +323,12 @@ function addLog(text, container) {
   div.className = "log-entry";
   div.innerText = `[${timeStr}] ${text}`;
   container.prepend(div);
+
+  // 👉 ป้องกันหน่วยความจำบวม: หากประวัติแสดงผลเกิน 50 รายการ ให้ตัดรายการเก่าสุดทิ้งทันที
+  const maxLogs = 50;
+  while (container.children.length > maxLogs) {
+    container.removeChild(container.lastChild);
+  }
 }
 
 function sendLogAsync(uid, status) {
