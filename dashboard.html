@@ -2,8 +2,8 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Dashboard - กองบิน 46 พิษณุโลก (Responsive Outdoor)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - กองบิน 46 พิษณุโลก (Outdoor Responsive)</title>
   <!-- โหลดไลบรารี Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -19,7 +19,7 @@
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-space); color: var(--text-main); margin: 0; padding: 10px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     
-    /* Responsive Container: ยืดหยุ่นตามหน้าจอ ไม่ตกขอบ */
+    /* กรอบ 16:9 เรืองแสงสู้แสงจ้า */
     .dashboard-container { 
       width: 100%; 
       max-width: 1700px; 
@@ -33,18 +33,18 @@
       border: 2px solid var(--border-glow); 
     }
     
-    /* ส่วนหัว: โลโก้และชื่อหน่วยงาน */
+    /* ส่วนหัว */
     .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(56, 189, 248, 0.3); padding-bottom: 12px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
     .logo-title { display: flex; align-items: center; gap: 15px; }
     .logo-title img { height: 60px; width: auto; border-radius: 8px; box-shadow: 0 0 12px rgba(56, 189, 248, 0.5); border: 1px solid var(--accent-blue); }
     .header h1 { margin: 0; font-size: clamp(1.5rem, 2.5vw, 2.3rem); color: #ffffff; font-weight: 900; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
 
-    /* หน้าจอ Login สำหรับแอดมิน */
+    /* หน้าจอ Login */
     #login-section { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; }
     #login-section input { width: 100%; max-width: 400px; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 2px solid var(--accent-blue); background: #0b0f19; color: white; font-size: 18px; text-align: center; }
     #login-section button { width: 100%; max-width: 400px; padding: 15px; border-radius: 10px; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; font-size: 18px; font-weight: bold; cursor: pointer; }
 
-    /* โครงสร้าง Responsive Grid (คอมพิวเตอร์แสดง 2 คอลัมน์ / มือถือแสดงคอลัมน์เดียว) */
+    /* โครงสร้าง Grid 2 ฝั่ง */
     .main-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; flex: 1; }
     @media (max-width: 1024px) {
       .main-grid { grid-template-columns: 1fr; }
@@ -53,21 +53,17 @@
 
     .column { display: flex; flex-direction: column; gap: 16px; }
     
-    /* การ์ดสไตล์กระจกเรืองแสง */
     .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 12px; padding: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); display: flex; flex-direction: column; }
     .card h3 { margin: 0 0 12px 0; font-size: 1.2rem; color: #38bdf8; border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 6px; font-weight: 700; }
 
-    /* กล่องสถิติตัวเลข */
     .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .stat-box { background: rgba(15, 23, 42, 0.9); padding: 12px; border-radius: 8px; text-align: center; border: 1px solid rgba(56, 189, 248, 0.3); }
     .stat-title { font-size: 0.95rem; color: var(--text-muted); font-weight: bold; }
     .stat-value { font-size: clamp(2rem, 3vw, 3rem); font-weight: 900; color: #38bdf8; margin-top: 5px; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
     .stat-value.success { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
 
-    /* พื้นที่กราฟโดนัท */
     .chart-container { position: relative; width: 100%; height: 240px; display: flex; justify-content: center; align-items: center; }
 
-    /* ตารางข้อมูล Responsive */
     .table-responsive { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.95rem; white-space: nowrap; }
     th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(56, 189, 248, 0.15); }
@@ -76,11 +72,44 @@
 
     .pdpa-notice { font-size: 0.85rem; color: #fca5a5; background: rgba(127, 29, 29, 0.3); padding: 8px; border-radius: 6px; text-align: center; border: 1px solid rgba(153, 27, 27, 0.5); margin-top: 12px; }
     
-    /* แถบรีเฟรช */
     .refresh-badge { font-size: 0.9rem; color: #38bdf8; background: rgba(3, 105, 161, 0.3); padding: 6px 12px; border-radius: 20px; border: 1px solid #0284c7; display: flex; align-items: center; gap: 6px; }
+
+    /* 🎈 Popup การ์ตูนเด็กยิ้มน่ารักๆ บน Dashboard */
+    #dashboard-popup {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(3, 7, 18, 0.8); backdrop-filter: blur(6px);
+      display: none; justify-content: center; align-items: center; z-index: 9999;
+    }
+    .popup-box {
+      background: #1e293b; width: 90%; max-width: 420px; padding: 35px 20px;
+      border-radius: 24px; text-align: center; box-shadow: 0 0 50px rgba(74, 222, 128, 0.4);
+      animation: bounceInDashboard 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      border: 3px solid #4ade80;
+    }
+    @keyframes bounceInDashboard {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.08); opacity: 1; }
+      70% { transform: scale(0.95); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .popup-icon { font-size: 90px; margin-bottom: 15px; animation: smileAnim 1.2s infinite alternate; }
+    @keyframes smileAnim {
+      0% { transform: scale(1) rotate(-5deg); }
+      100% { transform: scale(1.1) rotate(5deg); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- 🎈 Popup การ์ตูนเด็กยิ้มต้อนรับบน Dashboard -->
+  <div id="dashboard-popup">
+    <div class="popup-box">
+      <div class="popup-icon">👦🎉</div>
+      <h2 style="color: #4ade80; font-size: 2rem; margin: 0 0 10px 0; text-shadow: 0 0 10px rgba(74,222,128,0.5);">มีผู้เข้าร่วมงานเช็กอินใหม่!</h2>
+      <p style="color: #f8fafc; font-size: 1.3rem; margin: 0 0 15px 0;" id="dash-popup-name">คุณ ... เช็กอินเข้างานแล้ว</p>
+      <div><span style="background: rgba(74,222,128,0.2); color: #4ade80; padding: 8px 16px; border-radius: 20px; font-size: 1rem; font-weight: bold; border: 1px solid #4ade80;">ยินดีต้อนรับสู่งานวันเด็ก บน.46</span></div>
+    </div>
+  </div>
 
 <div class="dashboard-container">
   
@@ -108,7 +137,7 @@
     <div id="status" style="margin-top: 15px; color: #ef4444; font-size: 1rem; font-weight: bold;"></div>
   </div>
 
-  <!-- เนื้อหาหลัก 2 ฝั่ง (Responsive Grid) -->
+  <!-- เนื้อหาหลัก 2 ฝั่ง -->
   <div id="dashboard-section" class="main-grid" style="display:none;">
     
     <!-- ฝั่งซ้าย -->
@@ -184,6 +213,7 @@
 <script>
 let autoRefreshInterval = null;
 let myChart = null;
+let lastCheckedInCount = -1; // ตัวแปรจำยอดเช็กอินเดิมไว้เทียบเพื่อเด้ง Popup
 
 function hexToBytes(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
 
@@ -255,6 +285,7 @@ function processDashboard(data) {
   let checkedInPeopleCount = 0;
   let vehicleStats = {};
   let guestHtml = "";
+  let latestCheckedInName = "";
   
   const reversedData = [...data].reverse();
 
@@ -278,6 +309,10 @@ function processDashboard(data) {
     totalPeopleCount += peopleNum;
     if (isScanned) {
       checkedInPeopleCount += peopleNum;
+      // เก็บชื่อคนล่าสุดที่เช็กอิน
+      if (!latestCheckedInName) {
+        latestCheckedInName = name + " " + surname;
+      }
     }
 
     if (vehicle !== "") {
@@ -305,6 +340,12 @@ function processDashboard(data) {
     }
   });
 
+  // 🎈 ตรวจสอบว่าถ้ามีจำนวนคนเช็กอินเพิ่มขึ้น ให้เด้ง Popup การ์ตูนเด็กยิ้มต้อนรับ
+  if (lastCheckedInCount !== -1 && checkedInPeopleCount > lastCheckedInCount) {
+    showDashboardPopup(latestCheckedInName);
+  }
+  lastCheckedInCount = checkedInPeopleCount;
+
   document.getElementById("val-total-reg").innerText = totalPeopleCount.toLocaleString();
   document.getElementById("val-checked-in").innerText = checkedInPeopleCount.toLocaleString();
 
@@ -321,6 +362,20 @@ function processDashboard(data) {
   document.getElementById("guest-table").querySelector("tbody").innerHTML = guestHtml;
 
   renderDoughnutChart(checkedInPeopleCount, totalPeopleCount);
+}
+
+// 👉 ฟังก์ชันแสดง Popup การ์ตูนเด็กยิ้มบน Dashboard
+function showDashboardPopup(guestName) {
+  const popup = document.getElementById("dashboard-popup");
+  const nameEl = document.getElementById("dash-popup-name");
+  nameEl.innerText = `คุณ ${maskName(guestName)} เช็กอินเข้างานแล้ว!`;
+  
+  popup.style.display = "flex";
+
+  // ซ่อนอัตโนมัติใน 3.5 วินาที
+  setTimeout(() => {
+    popup.style.display = "none";
+  }, 3500);
 }
 
 function renderDoughnutChart(checkedIn, totalReg) {
