@@ -4,24 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - สรุปยอดเช็กอิน (16:9 Layout)</title>
-  <!-- โหลดไลบรารี Chart.js สำหรับทำกราฟ -->
+  <!-- โหลดไลบรารี Chart.js สำหรับทำกราฟโดนัท -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { --primary: #0f172a; --bg: #0b0f19; --card: #1e293b; --text: #f8fafc; --text-muted: #94a3b8; }
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     
-    /* บังคับกรอบ 16:9 สำหรับแสดงผลหน้าจอทีวี/เดสก์ท็อป */
+    /* บังคับกรอบสัดส่วน 16:9 สำหรับหน้าจอทีวี/เดสก์ท็อป */
     .dashboard-container { width: 100%; max-width: 1700px; aspect-ratio: 16 / 9; background: #0f172a; border-radius: 16px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; border: 1px solid #334155; }
     
-    /* ส่วนหัว: โลโก้และชื่อหน่วยงาน */
+    /* ส่วนหัว: โลโก้ LOGO.png และชื่อหน่วยงาน */
     .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 15px; margin-bottom: 20px; }
     .logo-title { display: flex; align-items: center; gap: 20px; }
     .logo-title img { height: 75px; width: auto; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
     .header h1 { margin: 0; font-size: 2.2rem; color: #38bdf8; font-weight: 800; letter-spacing: 0.5px; }
-    .header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 1.1rem; }
 
-    /* หน้าจอ Login */
+    /* หน้าจอ Login สำหรับแอดมิน */
     #login-section { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
     #login-section input { width: 400px; padding: 16px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; font-size: 20px; text-align: center; }
     #login-section button { width: 400px; padding: 16px; border-radius: 8px; background: #0ea5e9; color: white; border: none; font-size: 20px; font-weight: bold; cursor: pointer; }
@@ -41,8 +40,8 @@
     .stat-value { font-size: 2.8rem; font-weight: 900; color: #38bdf8; margin-top: 5px; }
     .stat-value.success { color: #4ade80; }
 
-    /* พื้นที่กราฟฝั่งซ้าย */
-    .chart-container { position: relative; flex: 1; min-height: 250px; display: flex; justify-content: center; align-items: center; }
+    /* พื้นที่กราฟโดนัทฝั่งซ้าย */
+    .chart-container { position: relative; flex: 1; min-height: 220px; display: flex; justify-content: center; align-items: center; }
 
     /* ตารางข้อมูลฝั่งขวา */
     table { width: 100%; border-collapse: collapse; font-size: 1.05rem; }
@@ -60,14 +59,12 @@
 
 <div class="dashboard-container">
   
-  <!-- ส่วนหัว (Header) พร้อมโลโก้กองบิน -->
+  <!-- ส่วนหัว (Header) พร้อมโลโก้ LOGO.png -->
   <div class="header">
-    <div class="-title">
-      <!-- 📌 วางลิงก์รูปโลโก้กองบินของคุณตรง src ด้านล่างนี้ -->
+    <div class="logo-title">
       <img src="LOGO.png" alt="Logo Wing 46">
       <div>
-        <h1>กองบิน 46 พิษณุโลก - ระบบติดตามการเช็กอินวันเด็กแห่งชาติ</h1>
-        <p>Real-time Command & Monitoring Dashboard</p>
+        <h1>กองบิน 46 พิษณุโลก</h1>
       </div>
     </div>
     <div id="header-status" style="display:none;">
@@ -89,7 +86,7 @@
   <!-- เนื้อหาหลัก 2 ฝั่ง (ซ้าย-ขวา) เมื่อล็อกอินสำเร็จ -->
   <div id="dashboard-section" class="main-grid" style="display:none;">
     
-    <!-- 📌 ฝั่งซ้าย: กราฟสถิติและตัวเลขรวม -->
+    <!-- 📌 ฝั่งซ้าย: กราฟโดนัทและตัวเลขรวม -->
     <div class="column">
       <div class="card">
         <div class="stat-grid">
@@ -105,7 +102,7 @@
       </div>
 
       <div class="card" style="flex: 1;">
-        <h3>📊 กราฟแสดงสถิติการเช็กอินแยกตามจุดสถานี</h3>
+        <h3>📊 สัดส่วนการเช็กอินเข้างาน</h3>
         <div class="chart-container">
           <canvas id="stationChart"></canvas>
         </div>
@@ -232,7 +229,6 @@ function processDashboard(data) {
   let totalPeopleCount = 0;
   let checkedInPeopleCount = 0;
   let vehicleStats = {};
-  let stationStats = { "จุดสแกน 1": 0, "จุดสแกน 2": 0, "จุดสแกน 3": 0, "จุดสแกน 4": 0, "จุดสแกน 5": 0 };
   let guestHtml = "";
   
   const reversedData = [...data].reverse();
@@ -252,9 +248,6 @@ function processDashboard(data) {
     totalPeopleCount += peopleNum;
     if (isScanned) {
       checkedInPeopleCount += peopleNum;
-      // จำลองการกระจายกราฟตามสถานี (อ้างอิงข้อมูลจริงถ้ามี หรือนับรวม)
-      let stName = row["_station"] || "จุดสแกน 1";
-      stationStats[stName] = (stationStats[stName] || 0) + peopleNum;
     }
 
     if (vehicle !== "") {
@@ -295,53 +288,55 @@ function processDashboard(data) {
   document.getElementById("vehicle-table").querySelector("tbody").innerHTML = vehicleHtml;
   document.getElementById("guest-table").querySelector("tbody").innerHTML = guestHtml;
 
-  // วาดกราฟด้วย Chart.js ฝั่งซ้าย
-  renderChart(stationStats);
+  // วาดกราฟโดนัทพร้อมอนิเมชัน
+  renderDoughnutChart(checkedInPeopleCount, totalPeopleCount);
 }
 
-function renderChart(stats) {
+function renderDoughnutChart(checkedIn, totalReg) {
   const ctx = document.getElementById('stationChart').getContext('2d');
-  
-  const labels = Object.keys(stats);
-  const dataVals = Object.values(stats);
+  const notCheckedIn = Math.max(0, totalReg - checkedIn);
 
   if (myChart) {
-    myChart.data.labels = labels;
-    myChart.data.datasets[0].data = dataVals;
+    myChart.data.datasets[0].data = [checkedIn, notCheckedIn];
     myChart.update();
     return;
   }
 
   myChart = new Chart(ctx, {
-    type: 'bar',
+    type: 'doughnut',
     data: {
-      labels: labels,
+      labels: ['เช็กอินแล้ว', 'ยังไม่เช็กอิน'],
       datasets: [{
-        label: 'จำนวนผู้เช็กอิน (คน)',
-        data: dataVals,
-        backgroundColor: '#0ea5e9',
-        borderColor: '#38bdf8',
-        borderWidth: 1,
+        data: [checkedIn, notCheckedIn],
+        backgroundColor: [
+          '#4ade80', // สีเขียว สำหรับคนที่เข้างานแล้ว
+          '#334155'  // สีเทา สำหรับคนที่ยังไม่มา
+        ],
+        borderWidth: 2,
+        borderColor: '#1e293b',
         borderRadius: 6
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
+      animation: {
+        animateScale: true,
+        animateRotate: true,
+        duration: 1500,
+        easing: 'easeOutQuart'
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { color: '#94a3b8', font: { size: 14 } },
-          grid: { color: '#334155' }
-        },
-        x: {
-          ticks: { color: '#94a3b8', font: { size: 14 } },
-          grid: { display: false }
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#f8fafc',
+            font: { size: 16, weight: 'bold' },
+            padding: 20
+          }
         }
-      }
+      },
+      cutout: '70%'
     }
   });
 }
