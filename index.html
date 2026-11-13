@@ -34,6 +34,10 @@
     @keyframes pulse-yellow { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
 
     .log-entry { font-family: monospace; font-size: 14px; margin: 6px 0; border-bottom: 1px dashed #e2e8f0; padding-bottom: 6px; }
+
+    /* สไตล์ปุ่มรีเฟรชด่วน */
+    .btn-sync-now { background: #0284c7; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; margin-left: 5px; }
+    .btn-sync-now:active { background: #0369a1; transform: scale(0.95); }
   </style>
 </head>
 <body>
@@ -63,9 +67,10 @@
   <div class="card" id="scanner-section" style="display:none;">
     <h2>📷 สแกนรหัสคิวอาร์</h2>
     
-    <!-- 👉 ข้อความแสดงเวลาดึงข้อมูลล่าสุด -->
-    <div id="sync-status" style="font-size: 13px; color: #0284c7; text-align: right; margin-bottom: 8px; font-weight: bold;">
-      🔄 อัปเดตข้อมูลล่าสุด: <span id="sync-time">-</span>
+    <!-- แถบแสดงเวลา และปุ่มกดบังคับรีเฟรชทันที -->
+    <div id="sync-status" style="font-size: 12px; color: #0284c7; text-align: right; margin-bottom: 8px; font-weight: bold; display: flex; justify-content: flex-end; align-items: center;">
+      <span>🔄 อัปเดตทุก 30วิ | ล่าสุด: <span id="sync-time">-</span></span>
+      <button class="btn-sync-now" onclick="manualForceSync()">⚡ รีเฟรชตอนนี้</button>
     </div>
 
     <div id="reader"></div>
@@ -84,7 +89,6 @@ let scannerInstance = null;
 let currentStation = "Scanner_Unknown";
 let scannedSet = new Set(JSON.parse(localStorage.getItem("scannedSet") || "[]"));
 
-// 👉 ตัวแปรใหม่สำหรับจัดการ Background Sync
 let savedPassphrase = "";
 let autoSyncInterval = null;
 
@@ -143,7 +147,6 @@ async function initSystem() {
       localDatabaseMap.set(String(item[uidKey]).trim(), item);
     });
     
-    // 👉 เก็บจำรหัสผ่านไว้เพื่อใช้ถอดรหัสอัตโนมัติรอบต่อไป
     savedPassphrase = passphrase;
     document.getElementById("sync-time").innerText = new Date().toLocaleTimeString('th-TH');
 
@@ -152,9 +155,9 @@ async function initSystem() {
     
     startScanner();
 
-    // 👉 สั่งให้ดึงข้อมูลอัปเดตอัตโนมัติทุก 60 วินาที (60000 ms)
+    // ตั้งเวลาดึงข้อมูลอัตโนมัติทุก 30 วินาที
     if (!autoSyncInterval) {
-      autoSyncInterval = setInterval(syncDataBackground, 60000);
+      autoSyncInterval = setInterval(syncDataBackground, 30000);
     }
     
   } catch (err) {
@@ -163,7 +166,7 @@ async function initSystem() {
   }
 }
 
-// 👉 ฟังก์ชันใหม่: ดึงและถอดรหัสข้อมูลแบบเงียบๆ พื้นหลัง
+// ฟังก์ชันดึงข้อมูลพื้นหลัง (ใช้ร่วมกันทั้งแบบ Auto และกดปุ่ม)
 async function syncDataBackground() {
   if (!savedPassphrase) return;
   try {
@@ -176,7 +179,6 @@ async function syncDataBackground() {
     if (rawData && !Array.isArray(rawData)) rawData = rawData.data || rawData.rows || rawData.records;
     if (!Array.isArray(rawData)) return;
 
-    // สร้าง Map ชุดใหม่เพื่อป้องกันข้อมูลชนกันขณะที่กล้องกำลังประมวลผลพอดี
     let newDatabaseMap = new Map();
     rawData.forEach(item => {
       let keys = Object.keys(item);
@@ -184,15 +186,26 @@ async function syncDataBackground() {
       newDatabaseMap.set(String(item[uidKey]).trim(), item);
     });
     
-    // นำ Map ชุดใหม่ไปทับของเดิมทันที
     localDatabaseMap = newDatabaseMap;
-    
-    // อัปเดตเวลาบนหน้าจอ
     document.getElementById("sync-time").innerText = new Date().toLocaleTimeString('th-TH');
-    console.log("[Background Sync] ข้อมูลอัปเดตสำเร็จ จำนวน:", localDatabaseMap.size);
+    console.log("[Sync Success] อัปเดตข้อมูลสำเร็จ จำนวน:", localDatabaseMap.size);
 
   } catch (err) {
-    console.error("[Background Sync] เกิดข้อผิดพลาด:", err);
+    console.error("[Sync Error]:", err);
+  }
+}
+
+// 👉 ฟังก์ชันสำหรับปุ่ม "รีเฟรชตอนนี้" (Force Sync + รีเซ็ตเวลาจับเวลา)
+async function manualForceSync() {
+  const syncTimeEl = document.getElementById("sync-time");
+  syncTimeEl.innerText = "กำลังรีเฟรช...";
+  
+  await syncDataBackground();
+  
+  // รีเซ็ตตัวนับเวลา 30 วินาทีใหม่ เพื่อไม่ให้มันตีกับรอบถัดไปเร็วเกินไป
+  if (autoSyncInterval) {
+    clearInterval(autoSyncInterval);
+    autoSyncInterval = setInterval(syncDataBackground, 30000);
   }
 }
 
