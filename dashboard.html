@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - สรุปยอดเช็กอิน (PDPA Compliant)</title>
+  <style>
+    :root { --primary: #0f172a; --bg: #f1f5f9; --card: #ffffff; --text: #334155; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    .container { max-width: 800px; width: 100%; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .stat-box { background: #e0f2fe; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #bae6fd; }
+    .stat-title { font-size: 0.9rem; color: #0284c7; font-weight: bold; }
+    .stat-value { font-size: 2rem; font-weight: 900; color: #0369a1; margin-top: 5px; }
+    
+    input[type="password"] { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; box-sizing: border-box; text-align: center;}
+    button.btn-login { background: #0ea5e9; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+    button.btn-login:hover { background: #0284c7; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; color: #475569; }
+    
+    .pdpa-notice { font-size: 12px; color: #ef4444; background: #fee2e2; padding: 10px; border-radius: 6px; text-align: center; margin-top: 20px;}
+    
+    /* ปุ่มควบคุม Auto Refresh */
+    .btn-toggle { background: #cbd5e1; color: #334155; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-right: 10px; }
+    .btn-toggle:active { transform: scale(0.95); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1 style="color: var(--primary);">📊 Dashboard วันเด็กแห่งชาติ บน.46</h1>
+    <p>ระบบติดตามยอดผู้เข้าร่วมงานแบบ Real-time</p>
+  </div>
+
+  <div class="card" id="login-section">
+    <h3 style="margin-top:0;">🔒 ยืนยันสิทธิ์แอดมินเพื่อดูข้อมูล</h3>
+    <input type="password" id="passphrase" placeholder="ใส่รหัสผ่าน (MASTER_PASSPHRASE)">
+    <button class="btn-login" onclick="loadData()">เข้าสู่ Dashboard</button>
+    <div id="status" style="margin-top: 10px; text-align: center; color: #64748b;"></div>
+  </div>
+
+  <div id="dashboard-section" style="display:none;">
+    
+    <!-- 👉 แถบควบคุม Auto-Refresh และเวลาล่าสุด -->
+    <div style="text-align: right; margin-bottom: 15px; font-size: 13px; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 12px; border-radius: 6px; display: inline-block; float: right; display: flex; align-items: center;">
+      <button id="btn-toggle-refresh" class="btn-toggle" onclick="toggleAutoRefresh()">⏸️ หยุดอัปเดตชั่วคราว</button>
+      <span id="refresh-status-text">🔄 อัตโนมัติทุก 1 นาที</span> &nbsp;|&nbsp; 
+      <span id="last-update-time" style="font-weight: bold; color: #0369a1;">อัปเดตล่าสุด: -</span>
+    </div>
+    <div style="clear: both;"></div>
+
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-title">จำนวนคนที่ลงทะเบียนรวม</div>
+        <div class="stat-value" id="val-total-reg">0</div>
+        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">คน</div>
+      </div>
+      <div class="stat-box" style="background: #dcfce7; border-color: #bbf7d0;">
+        <div class="stat-title" style="color: #166534;">เช็กอินหน้างานแล้ว (อ้างอิงจาก Logs)</div>
+        <div class="stat-value" style="color: #15803d;" id="val-checked-in">0</div>
+        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">คน (คาดการณ์)</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h3 style="margin-top:0;">🚗 สถิติประเภทรถที่ลงทะเบียน</h3>
+      <table id="vehicle-table">
+        <thead>
+          <tr>
+            <th>ประเภทรถ</th>
+            <th style="text-align: right;">จำนวน (คัน)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ข้อมูลรถจะมาแสดงตรงนี้ -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">👥 รายชื่อผู้เข้าร่วมล่าสุด (ปกปิดข้อมูลตาม PDPA)</h3>
+      <table id="guest-table">
+        <thead>
+          <tr>
+            <th>รหัส (UID)</th>
+            <th>ชื่อ - นามสกุล</th>
+            <th>มาด้วยกัน</th>
+            <th>สถานะเช็กอิน</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ข้อมูลคนจะมาแสดงตรงนี้ -->
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="pdpa-notice">
+      🔒 <b>Data Privacy:</b> ข้อมูลในตารางนี้ถูกเข้ารหัสจากเซิร์ฟเวอร์ และแสดงผลแบบ Masking เพื่อปฏิบัติตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล (PDPA)
+    </div>
+
+  </div>
+</div>
+
+<script>
+let autoRefreshInterval = null;
+let isAutoRefreshActive = true; // ตัวแปรเก็บสถานะการเปิด/ปิด Auto Refresh
+
+function hexToBytes(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
+
+async function deriveKey(passphrase, saltHex) {
+  const enc = new TextEncoder();
+  const salt = hexToBytes(saltHex);
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 }, false, ["decrypt"]
+  );
+}
+
+async function decryptPayload(payload, passphrase) {
+  const key = await deriveKey(passphrase, payload.salt);
+  const cipherWithTag = new Uint8Array(hexToBytes(payload.ciphertext).length + hexToBytes(payload.authTag).length);
+  cipherWithTag.set(hexToBytes(payload.ciphertext));
+  cipherWithTag.set(hexToBytes(payload.authTag), hexToBytes(payload.ciphertext).length);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hexToBytes(payload.iv), tagLength: 128 }, key, cipherWithTag);
+  return JSON.parse(new TextDecoder().decode(decrypted));
+}
+
+function maskName(str) {
+  if (!str || str.length <= 1) return str || "-";
+  return str.charAt(0) + "xxx" + (str.length > 5 ? str.charAt(str.length-1) : "");
+}
+
+function maskUID(str) {
+  if (!str) return "-";
+  return str.substring(0, 4) + "****" + str.substring(str.length - 4);
+}
+
+// 👉 ฟังก์ชันใหม่สำหรับสลับเปิด/ปิด Auto Refresh
+function toggleAutoRefresh() {
+  const btn = document.getElementById("btn-toggle-refresh");
+  const statusText = document.getElementById("refresh-status-text");
+  
+  if (isAutoRefreshActive) {
+    // กรณี: กำลังเปิดอยู่ -> สั่งปิดชั่วคราว
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+    isAutoRefreshActive = false;
+    
+    btn.innerHTML = "▶️ เปิดทำงานอัตโนมัติ";
+    btn.style.background = "#fef08a"; // เปลี่ยนปุ่มเป็นสีเหลืองเตือน
+    btn.style.color = "#854d0e";
+    statusText.innerHTML = "⚠️ หยุดอัปเดตชั่วคราว";
+    statusText.style.color = "#b45309";
+  } else {
+    // กรณี: ปิดอยู่ -> สั่งเปิดใหม่
+    isAutoRefreshActive = true;
+    
+    btn.innerHTML = "⏸️ หยุดอัปเดตชั่วคราว";
+    btn.style.background = "#cbd5e1"; // เปลี่ยนปุ่มกลับเป็นสีเทา
+    btn.style.color = "#334155";
+    statusText.innerHTML = "🔄 อัตโนมัติทุก 1 นาที";
+    statusText.style.color = "#64748b";
+    
+    // โหลดข้อมูลทันทีที่กดเปิด และเริ่มนับเวลาใหม่
+    loadData(); 
+  }
+}
+
+async function loadData() {
+  const pwd = document.getElementById("passphrase").value;
+  const statEl = document.getElementById("status");
+  if (!pwd) return statEl.innerText = "ใส่รหัสผ่านก่อนครับ";
+  
+  if (!autoRefreshInterval && isAutoRefreshActive) statEl.innerText = "กำลังดาวน์โหลดและถอดรหัสข้อมูล...";
+  
+  try {
+    const res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
+    const payload = await res.json();
+    let rawData = await decryptPayload(payload, pwd);
+    
+    if (rawData && !Array.isArray(rawData)) rawData = rawData.data || rawData.rows || rawData.records;
+    
+    processDashboard(rawData);
+    
+    document.getElementById("login-section").style.display = "none";
+    document.getElementById("dashboard-section").style.display = "block";
+    
+    const now = new Date().toLocaleTimeString('th-TH');
+    document.getElementById("last-update-time").innerText = "อัปเดตล่าสุด: " + now;
+
+    // ถ้าแอดมินไม่ได้กดปุ่มหยุดไว้ ให้ตั้งเวลาทำซ้ำทุก 60 วินาที
+    if (!autoRefreshInterval && isAutoRefreshActive) {
+      autoRefreshInterval = setInterval(loadData, 60000);
+    }
+    
+  } catch(e) {
+    if (!autoRefreshInterval) {
+      statEl.innerText = "❌ รหัสผ่านผิด หรือเกิดข้อผิดพลาด: " + e.message;
+    } else {
+      console.error("Auto-refresh error:", e.message);
+    }
+  }
+}
+
+function processDashboard(data) {
+  let totalPeopleCount = 0;
+  let checkedInPeopleCount = 0;
+  let vehicleStats = {};
+  let guestHtml = "";
+  
+  const reversedData = [...data].reverse();
+
+  reversedData.forEach((row, index) => {
+    let keys = Object.keys(row);
+    let uidKey = keys.find(k => ['ID', 'UID'].includes(k.trim().toUpperCase())) || keys[0];
+    
+    let uid = String(row[uidKey]).trim();
+    let name = row["ชื่อ"] || "";
+    let surname = row["นามสกุล"] || "";
+    let vehicle = String(row["ประเภทรถ"] || "ไม่ระบุ").trim();
+    let peopleStr = String(row["จำนวนคน"] || "1").replace(/[^0-9]/g, '');
+    let peopleNum = parseInt(peopleStr) || 1;
+    let isScanned = row["_isScanned"] === true || row["_isScanned"] === "true";
+
+    totalPeopleCount += peopleNum;
+    if (isScanned) checkedInPeopleCount += peopleNum;
+
+    if (vehicle !== "") {
+      if (!vehicleStats[vehicle]) vehicleStats[vehicle] = 0;
+      vehicleStats[vehicle]++;
+    }
+
+    if (index < 20) {
+      let statusBadge = isScanned 
+        ? `<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">เข้างานแล้ว</span>`
+        : `<span style="background: #cbd5e1; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 11px;">รอดำเนินการ</span>`;
+        
+      guestHtml += `
+        <tr>
+          <td style="font-family: monospace; color: #64748b;">${maskUID(uid)}</td>
+          <td><b>${maskName(name)}</b> ${maskName(surname)}</td>
+          <td style="text-align: center;">${peopleNum}</td>
+          <td>${statusBadge}</td>
+        </tr>
+      `;
+    }
+  });
+
+  document.getElementById("val-total-reg").innerText = totalPeopleCount.toLocaleString();
+  document.getElementById("val-checked-in").innerText = checkedInPeopleCount.toLocaleString();
+
+  let vehicleHtml = "";
+  let sortedVehicles = Object.entries(vehicleStats).sort((a, b) => b[1] - a[1]); 
+  
+  if (sortedVehicles.length === 0) {
+    vehicleHtml = `<tr><td colspan="2" style="text-align:center;">- ไม่มีข้อมูลยานพาหนะ -</td></tr>`;
+  } else {
+    sortedVehicles.forEach(([vType, count]) => {
+      vehicleHtml += `<tr><td>${vType}</td><td style="text-align: right; font-weight: bold;">${count.toLocaleString()}</td></tr>`;
+    });
+  }
+  
+  document.getElementById("vehicle-table").querySelector("tbody").innerHTML = vehicleHtml;
+  document.getElementById("guest-table").querySelector("tbody").innerHTML = guestHtml;
+}
+</script>
+
+</body>
+</html>

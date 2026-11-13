@@ -10,7 +10,7 @@
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
     .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); width: 100%; max-width: 500px; text-align: center; box-sizing: border-box; }
     h2 { margin-top: 0; color: var(--primary); font-size: 1.5rem; }
-    input[type="password"] { width: 100%; padding: 14px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 18px; text-align: center; box-sizing: border-box; }
+    input[type="password"], select { width: 100%; padding: 14px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 18px; text-align: center; box-sizing: border-box; }
     button.btn-primary { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
     button.btn-primary:active { background: #0369a1; transform: scale(0.98); }
     #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: #f1f5f9; }
@@ -21,23 +21,19 @@
     #result-box { margin-top: 16px; padding: 20px; border-radius: 10px; display: none; text-align: left; font-size: 1.2rem; line-height: 1.7; transition: all 0.3s ease; }
     .success { background: #dcfce7; color: #166534; border: 2px solid #22c55e; }
     .error { background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; }
+    .warning { background: #fef08a; color: #854d0e; border: 2px solid #eab308; }
     
-    /* สไตล์ไฟสถานะกระพริบ (Indicator Dot) */
+    /* สไตล์ไฟสถานะกระพริบ */
     .status-indicator { display: flex; align-items: center; font-weight: bold; font-size: 1.3rem; margin-bottom: 8px; }
     .dot { height: 16px; width: 16px; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); }
+    
     .dot-green { background-color: #22c55e; animation: pulse-green 1.5s infinite; }
     .dot-red { background-color: #ef4444; animation: pulse-red 1.5s infinite; }
+    .dot-yellow { background-color: #eab308; animation: pulse-yellow 1.5s infinite; }
 
-    @keyframes pulse-green {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-    }
-    @keyframes pulse-red {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
+    @keyframes pulse-green { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+    @keyframes pulse-red { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+    @keyframes pulse-yellow { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
 
     .log-entry { font-family: monospace; font-size: 14px; margin: 6px 0; border-bottom: 1px dashed #e2e8f0; padding-bottom: 6px; }
   </style>
@@ -47,6 +43,21 @@
   <div class="card" id="auth-section">
     <h2>🔒 กรุณายืนยันตัวตน</h2>
     <p style="font-size: 15px; color: #64748b;">ระบบสแกนเช็กอินภาคสนาม</p>
+    
+    <!-- 👉 เพิ่มกล่อง Dropdown สำหรับเลือก 10 จุดสแกน -->
+    <select id="station-select">
+      <option value="Scanner_1">จุดสแกนที่ 1</option>
+      <option value="Scanner_2">จุดสแกนที่ 2</option>
+      <option value="Scanner_3">จุดสแกนที่ 3</option>
+      <option value="Scanner_4">จุดสแกนที่ 4</option>
+      <option value="Scanner_5">จุดสแกนที่ 5</option>
+      <option value="Scanner_6">จุดสแกนที่ 6</option>
+      <option value="Scanner_7">จุดสแกนที่ 7</option>
+      <option value="Scanner_8">จุดสแกนที่ 8</option>
+      <option value="Scanner_9">จุดสแกนที่ 9</option>
+      <option value="Scanner_10">จุดสแกนที่ 10</option>
+    </select>
+
     <input type="password" id="passphrase" placeholder="ใส่รหัสผ่านประจำสถานี" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <button class="btn-primary" onclick="initSystem()">ปลดล็อกระบบ</button>
     <div id="auth-status" style="margin-top: 16px; color: #64748b; font-size: 15px;"></div>
@@ -61,15 +72,18 @@
   </div>
 
 <script>
+// ⚠️ อย่าลืมแก้ URL ตรงนี้ให้เป็นของคุณเอง และมี ?token=... ต่อท้าย
 const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwk_TbXhr4i2HiI4LssWjkH89gD54SIBKIzsHsexE2015q959XSt8Q_6DAnQF2n0jrNmw/exec";
 
 let localDatabaseMap = new Map();
 let isProcessing = false;
 let scannerInstance = null;
+let currentStation = "Scanner_Unknown"; // ตัวแปรเก็บจุดสแกน
 
-function hexToBytes(hex) {
-  return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-}
+// โหลดประวัติการสแกนเดิมที่ค้างอยู่ในเครื่อง
+let scannedSet = new Set(JSON.parse(localStorage.getItem("scannedSet") || "[]"));
+
+function hexToBytes(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
 
 async function deriveKey(passphrase, saltHex) {
   const enc = new TextEncoder();
@@ -99,37 +113,32 @@ async function decryptPayload(payload, passphrase) {
 }
 
 async function initSystem() {
-  // ตัดช่องว่างหัว-ท้าย (คีย์บอร์ดมือถือมักเติมเว้นวรรคท้ายคำให้เอง)
   const passphrase = document.getElementById("passphrase").value.trim();
+  
+  // 👉 รับค่าว่าเครื่องนี้เลือกจุดสแกนหมายเลขอะไร
+  currentStation = document.getElementById("station-select").value; 
+  
   const statusEl = document.getElementById("auth-status");
   
-  if (!passphrase) {
-    statusEl.innerText = "⚠️ กรุณาพิมพ์รหัสผ่าน";
-    return;
-  }
+  if (!passphrase) { statusEl.innerText = "⚠️ กรุณาพิมพ์รหัสผ่าน"; return; }
   
   statusEl.innerText = "⏳ กำลังดาวน์โหลดข้อมูล...";
   
   try {
     const res = await fetch("data.json?t=" + new Date().getTime(), { cache: "no-store" });
-    if (!res.ok) throw new Error("ไม่พบไฟล์ข้อมูล หรือบอทยังทำงานไม่เสร็จ (HTTP " + res.status + ")");
+    if (!res.ok) throw new Error("ไม่พบไฟล์ข้อมูล (HTTP " + res.status + ")");
     const payload = await res.json();
 
-    if (!payload || !payload.salt || !payload.iv || !payload.authTag || !payload.ciphertext) {
-      throw new Error("ไฟล์ data.json ไม่อยู่ในรูปแบบที่เข้ารหัสไว้");
-    }
+    if (!payload || !payload.salt) throw new Error("ไฟล์ไม่อยู่ในรูปแบบเข้ารหัส");
     
     statusEl.innerText = "🔐 กำลังถอดรหัสข้อมูล...";
     let rawData = await decryptPayload(payload, passphrase);
 
-    // รองรับกรณี GAS ส่งข้อมูลมาเป็น object ที่ห่อรายการไว้ข้างใน
     if (rawData && !Array.isArray(rawData)) {
       if (rawData.error) throw new Error("GAS ปฏิเสธคำขอ: " + rawData.error);
       rawData = rawData.data || rawData.rows || rawData.records;
     }
-    if (!Array.isArray(rawData)) {
-      throw new Error("โครงสร้างข้อมูลไม่ใช่รายการ (array)");
-    }
+    if (!Array.isArray(rawData)) throw new Error("ข้อมูลไม่ใช่รายการ (array)");
     
     localDatabaseMap.clear();
     rawData.forEach(item => {
@@ -146,12 +155,8 @@ async function initSystem() {
     startScanner();
     
   } catch (err) {
-    console.error(err);
-    // Web Crypto โยน OperationError (ไม่มีข้อความ) เมื่อกุญแจไม่ตรงกับตอนเข้ารหัส
     const wrongKey = err && err.name === "OperationError";
-    const msg = wrongKey
-      ? "รหัสผ่านไม่ตรงกับที่ใช้เข้ารหัส หรือ data.json เป็นไฟล์เก่า"
-      : (err && err.message ? err.message : "ข้อมูลผิดพลาด");
+    const msg = wrongKey ? "รหัสผ่านไม่ตรงกับที่ใช้เข้ารหัส" : (err.message || "ข้อมูลผิดพลาด");
     statusEl.innerHTML = `<span style="color:red">❌ ${msg}</span>`;
     document.getElementById("passphrase").value = "";
   }
@@ -160,10 +165,7 @@ async function initSystem() {
 function startScanner() {
   let qrboxSize = window.innerWidth < 400 ? 220 : 260;
   scannerInstance = new Html5QrcodeScanner("reader", { 
-    fps: 10,
-    qrbox: { width: qrboxSize, height: qrboxSize },
-    aspectRatio: 1.0,
-    rememberLastUsedCamera: true
+    fps: 10, qrbox: { width: qrboxSize, height: qrboxSize }, aspectRatio: 1.0, rememberLastUsedCamera: true
   });
   scannerInstance.render(onScanSuccess);
 }
@@ -171,19 +173,14 @@ function startScanner() {
 function maskIdCard(id) {
   if (!id) return "-";
   let s = String(id).trim();
-  if (s.length >= 10) {
-    return s.substring(0, 4) + "xxxxxx" + s.substring(10);
-  }
+  if (s.length >= 10) return s.substring(0, 4) + "xxxxxx" + s.substring(10);
   return s;
 }
 
 function maskPhone(phone) {
   if (!phone) return "-";
   let s = String(phone).trim();
-  if (s.length >= 2) {
-    let last2 = s.slice(-2);
-    return "xxxxxxxx" + last2;
-  }
+  if (s.length >= 2) return "xxxxxxxx" + s.slice(-2);
   return s;
 }
 
@@ -195,13 +192,8 @@ function onScanSuccess(decodedText) {
   const resBox = document.getElementById("result-box");
   const recentLogs = document.getElementById("recent-logs");
   
-  // 👉 ตรวจสอบค่าดิบ (Debugging)
-  console.log("🔍 ค่าจาก QR Code (UID):", uid);
-  
   if (localDatabaseMap.has(uid)) {
     const record = localDatabaseMap.get(uid);
-    console.log("✅ พบข้อมูลจับคู่สำเร็จ:", record);
-    
     const name = record["ชื่อ"] || "-";
     const surname = record["นามสกุล"] || "";
     const rawId = record["เลขบัตรประชาชน"] || "";
@@ -209,49 +201,59 @@ function onScanSuccess(decodedText) {
     const carPlate = record["ทะเบียนรถ"] || "-";
     const countPeople = record["จำนวนคน"] || "1";
     
-    const maskedId = maskIdCard(rawId);
-    const maskedPhone = maskPhone(rawPhone);
-    
-    // สถานะพบข้อมูล: แสดงไฟสีเขียว
-    resBox.className = "success";
-    resBox.innerHTML = `
-      <div class="status-indicator"><span class="dot dot-green"></span> พบข้อมูลในระบบ (สำเร็จ)</div>
-      <hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
-      👤 <b>ชื่อ-นามสกุล:</b> ${name} ${surname}<br>
-      🆔 <b>เลขบัตรประชาชน:</b> ${maskedId}<br>
-      📞 <b>เบอร์โทรศัพท์:</b> ${maskedPhone}<br>
-      🚗 <b>ทะเบียนรถ:</b> ${carPlate}<br>
-      👥 <b>จำนวนคน:</b> ${countPeople} ท่าน
-      <hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
-      <div style="font-size: 0.9rem; color: #166534; font-family: monospace;">
-        [DEBUG] UID: ${uid}
-      </div>
-    `;
-    resBox.style.display = "block";
-    
-    addLog(`✅ ${uid} - ${name} ${surname}`, recentLogs);
-    sendLogAsync(uid, "SUCCESS");
+    // ตรวจสอบ 2 ชั้น: เช็กที่เครื่อง (Local) หรือ เซิร์ฟเวอร์ (Google)
+    const isLocalScanned = scannedSet.has(uid);
+    const isServerScanned = record["_isScanned"] === true || record["_isScanned"] === "true";
+
+    if (isLocalScanned || isServerScanned) {
+      // ⚠️ กรณีสแกนซ้ำ หรือสวมรอย
+      resBox.className = "warning";
+      resBox.innerHTML = `
+        <div class="status-indicator"><span class="dot dot-yellow"></span> สแกนซ้ำ (เช็กอินแล้ว)</div>
+        <hr style="margin: 8px 0; border:0; border-top:1px solid #fde047;">
+        👤 <b>ชื่อ-นามสกุล:</b> ${name} ${surname}<br>
+        <div style="margin-top: 10px; padding: 10px; background: #fef9c3; border: 1px dashed #ca8a04; border-radius: 6px; text-align: center;">
+          <span style="font-size: 1.1rem; color: #b45309; font-weight: bold;">⚠️ คิวอาร์โค้ดนี้มีการลงทะเบียนไปแล้ว</span><br>
+          <span style="font-size: 1.2rem; color: #dc2626; font-weight: bold; display: block; margin-top: 5px;">🛑 กรุณาติดต่อเจ้าหน้าที่!</span>
+        </div>
+      `;
+      resBox.style.display = "block";
+      
+      addLog(`⚠️ ${uid} - สแกนซ้ำ (${name})`, recentLogs);
+      sendLogAsync(uid, "DUPLICATE"); 
+      
+    } else {
+      // ✅ กรณีสแกนผ่านปกติ
+      scannedSet.add(uid);
+      localStorage.setItem("scannedSet", JSON.stringify(Array.from(scannedSet)));
+      
+      const maskedId = maskIdCard(rawId);
+      const maskedPhone = maskPhone(rawPhone);
+      
+      resBox.className = "success";
+      resBox.innerHTML = `
+        <div class="status-indicator"><span class="dot dot-green"></span> พบข้อมูลในระบบ (สำเร็จ)</div>
+        <hr style="margin: 8px 0; border:0; border-top:1px solid #bbf7d0;">
+        👤 <b>ชื่อ-นามสกุล:</b> ${name} ${surname}<br>
+        🆔 <b>เลขบัตรประชาชน:</b> ${maskedId}<br>
+        📞 <b>เบอร์โทรศัพท์:</b> ${maskedPhone}<br>
+        🚗 <b>ทะเบียนรถ:</b> ${carPlate}<br>
+        👥 <b>จำนวนคน:</b> ${countPeople} ท่าน
+      `;
+      resBox.style.display = "block";
+      
+      addLog(`✅ ${uid} - ${name} ${surname}`, recentLogs);
+      sendLogAsync(uid, "SUCCESS");
+    }
     
   } else {
-    // สถานะไม่พบข้อมูล: แสดงไฟสีแดง และโชว์ข้อมูล Debug
+    // ❌ กรณีไม่พบในระบบ
     resBox.className = "error";
-    
-    // ดึงค่า Key ทั้งหมดในฐานข้อมูลมาแสดง 3 ค่าแรก เพื่อดูรูปแบบ
-    const keysArray = Array.from(localDatabaseMap.keys());
-    const sampleKeys = keysArray.slice(0, 3).join(", ") || "ไม่มีข้อมูล";
-
     resBox.innerHTML = `
       <div class="status-indicator"><span class="dot dot-red"></span> ไม่พบข้อมูลในระบบ</div>
       <hr style="margin: 8px 0; border:0; border-top:1px solid #fecaca;">
       รหัสที่สแกน: <b>${uid}</b><br>
       <span style="font-size: 1rem; color: #b91c1c;">กรุณาตรวจสอบรายชื่อใหม่อีกครั้ง</span>
-      <hr style="margin: 8px 0; border:0; border-top:1px solid #fecaca;">
-      <div style="font-size: 0.85rem; color: #991b1b; font-family: monospace; word-break: break-all;">
-        [DEBUG INFO]<br>
-        อ่านได้: "${uid}"<br>
-        ความยาว: ${uid.length} ตัวอักษร<br>
-        ตัวอย่าง ID ในระบบ: ${sampleKeys}
-      </div>
     `;
     resBox.style.display = "block";
     
@@ -262,7 +264,7 @@ function onScanSuccess(decodedText) {
   setTimeout(() => {
     isProcessing = false;
     resBox.style.display = "none";
-  }, 5000); // ขยายเวลาโชว์เป็น 5 วินาที เพื่อให้มีเวลาอ่าน Debug
+  }, 5000); 
 }
 
 function addLog(text, container) {
@@ -278,22 +280,12 @@ function sendLogAsync(uid, status) {
   
   fetch(GAS_WEBAPP_URL, {
     method: "POST",
-    mode: "no-cors",       // 1. บังคับเบราว์เซอร์ไม่ให้สนใจเรื่อง CORS
-    redirect: "follow",    // 2. อนุญาตให้วิ่งตามลิงก์ Redirect ของ Google
-    headers: { 
-      "Content-Type": "text/plain" // 3. สำคัญมาก! ต้องใช้ text/plain เพื่อหลีกเลี่ยง Preflight Request
-    },
-    body: JSON.stringify({
-      uid: uid,
-      stationId: "Mobile_Scanner_1",
-      status: status
-    })
-  }).then(() => {
-    // ในโหมด no-cors เบราว์เซอร์จะอ่านค่าตอบกลับจาก GAS ไม่ได้ แต่ข้อมูลจะถูกบันทึกลงชีตแน่นอน
-    console.log("✅ ส่งข้อมูล Log เข้า Google Sheets สำเร็จ");
-  }).catch(err => {
-    console.error("❌ Error sending log:", err);
-  });
+    mode: "no-cors",
+    redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    // 👉 ข้อมูลสถานีที่เลือก จะถูกส่งไป Google Sheets ที่นี่
+    body: JSON.stringify({ uid: uid, stationId: currentStation, status: status }) 
+  }).catch(err => console.error("Error sending log:", err));
 }
 </script>
 </body>
