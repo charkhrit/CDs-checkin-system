@@ -10,7 +10,7 @@
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
     .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); width: 100%; max-width: 500px; text-align: center; box-sizing: border-box; }
     h2 { margin-top: 0; color: var(--primary); font-size: 1.5rem; }
-    input[type="password"] { width: 100%; padding: 14px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 18px; text-align: center; box-sizing: border-box; }
+    input[type="password"], select { width: 100%; padding: 14px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 18px; text-align: center; box-sizing: border-box; }
     button.btn-primary { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
     button.btn-primary:active { background: #0369a1; transform: scale(0.98); }
     #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: #f1f5f9; }
@@ -43,6 +43,21 @@
   <div class="card" id="auth-section">
     <h2>🔒 กรุณายืนยันตัวตน</h2>
     <p style="font-size: 15px; color: #64748b;">ระบบสแกนเช็กอินภาคสนาม</p>
+    
+    <!-- 👉 เพิ่มกล่อง Dropdown สำหรับเลือก 10 จุดสแกน -->
+    <select id="station-select">
+      <option value="Scanner_1">จุดสแกนที่ 1</option>
+      <option value="Scanner_2">จุดสแกนที่ 2</option>
+      <option value="Scanner_3">จุดสแกนที่ 3</option>
+      <option value="Scanner_4">จุดสแกนที่ 4</option>
+      <option value="Scanner_5">จุดสแกนที่ 5</option>
+      <option value="Scanner_6">จุดสแกนที่ 6</option>
+      <option value="Scanner_7">จุดสแกนที่ 7</option>
+      <option value="Scanner_8">จุดสแกนที่ 8</option>
+      <option value="Scanner_9">จุดสแกนที่ 9</option>
+      <option value="Scanner_10">จุดสแกนที่ 10</option>
+    </select>
+
     <input type="password" id="passphrase" placeholder="ใส่รหัสผ่านประจำสถานี" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <button class="btn-primary" onclick="initSystem()">ปลดล็อกระบบ</button>
     <div id="auth-status" style="margin-top: 16px; color: #64748b; font-size: 15px;"></div>
@@ -57,12 +72,15 @@
   </div>
 
 <script>
+// ⚠️ อย่าลืมแก้ URL ตรงนี้ให้เป็นของคุณเอง และมี ?token=... ต่อท้าย
 const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwk_TbXhr4i2HiI4LssWjkH89gD54SIBKIzsHsexE2015q959XSt8Q_6DAnQF2n0jrNmw/exec";
 
 let localDatabaseMap = new Map();
 let isProcessing = false;
 let scannerInstance = null;
-// 👉 โหลดประวัติการสแกนเดิมที่ค้างอยู่ในเครื่อง
+let currentStation = "Scanner_Unknown"; // ตัวแปรเก็บจุดสแกน
+
+// โหลดประวัติการสแกนเดิมที่ค้างอยู่ในเครื่อง
 let scannedSet = new Set(JSON.parse(localStorage.getItem("scannedSet") || "[]"));
 
 function hexToBytes(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
@@ -96,6 +114,10 @@ async function decryptPayload(payload, passphrase) {
 
 async function initSystem() {
   const passphrase = document.getElementById("passphrase").value.trim();
+  
+  // 👉 รับค่าว่าเครื่องนี้เลือกจุดสแกนหมายเลขอะไร
+  currentStation = document.getElementById("station-select").value; 
+  
   const statusEl = document.getElementById("auth-status");
   
   if (!passphrase) { statusEl.innerText = "⚠️ กรุณาพิมพ์รหัสผ่าน"; return; }
@@ -179,7 +201,7 @@ function onScanSuccess(decodedText) {
     const carPlate = record["ทะเบียนรถ"] || "-";
     const countPeople = record["จำนวนคน"] || "1";
     
-    // 👉 การตรวจสอบ 2 ชั้น: เช็กที่เครื่อง (Local) หรือ เซิร์ฟเวอร์ (Google)
+    // ตรวจสอบ 2 ชั้น: เช็กที่เครื่อง (Local) หรือ เซิร์ฟเวอร์ (Google)
     const isLocalScanned = scannedSet.has(uid);
     const isServerScanned = record["_isScanned"] === true || record["_isScanned"] === "true";
 
@@ -198,7 +220,7 @@ function onScanSuccess(decodedText) {
       resBox.style.display = "block";
       
       addLog(`⚠️ ${uid} - สแกนซ้ำ (${name})`, recentLogs);
-      sendLogAsync(uid, "DUPLICATE"); // โยนเข้าชีตว่าเป็น DUPLICATE
+      sendLogAsync(uid, "DUPLICATE"); 
       
     } else {
       // ✅ กรณีสแกนผ่านปกติ
@@ -261,7 +283,8 @@ function sendLogAsync(uid, status) {
     mode: "no-cors",
     redirect: "follow",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ uid: uid, stationId: "Mobile_Scanner_1", status: status })
+    // 👉 ข้อมูลสถานีที่เลือก จะถูกส่งไป Google Sheets ที่นี่
+    body: JSON.stringify({ uid: uid, stationId: currentStation, status: status }) 
   }).catch(err => console.error("Error sending log:", err));
 }
 </script>
