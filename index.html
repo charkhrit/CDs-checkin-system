@@ -123,8 +123,9 @@ async function initSystem() {
     let rawData = await decryptPayload(payload, passphrase);
 
     // รองรับกรณี GAS ส่งข้อมูลมาเป็น object ที่ห่อรายการไว้ข้างใน
-    if (!Array.isArray(rawData) && rawData) {
-      rawData = rawData.data || rawData.rows || rawData.records || Object.values(rawData);
+    if (rawData && !Array.isArray(rawData)) {
+      if (rawData.error) throw new Error("GAS ปฏิเสธคำขอ: " + rawData.error);
+      rawData = rawData.data || rawData.rows || rawData.records;
     }
     if (!Array.isArray(rawData)) {
       throw new Error("โครงสร้างข้อมูลไม่ใช่รายการ (array)");
@@ -133,7 +134,9 @@ async function initSystem() {
     localDatabaseMap.clear();
     rawData.forEach(item => {
       let keys = Object.keys(item);
-      let uidKey = keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID')) || keys[0];
+      let uidKey = keys.find(k => ['ID', 'UID'].includes(k.trim().toUpperCase()))
+        || keys.find(k => k.toUpperCase().includes('UID') || k.toUpperCase().includes('ID'))
+        || keys[0];
       localDatabaseMap.set(String(item[uidKey]).trim(), item);
     });
     
