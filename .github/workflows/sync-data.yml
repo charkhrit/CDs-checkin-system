@@ -155,11 +155,22 @@ jobs:
             if (/^<(!doctype|html)/i.test(body)) {
               fail("GAS ตอบกลับเป็นหน้า HTML (น่าจะเป็นหน้า login/error ของ Google) - ตรวจว่า Deploy เป็น Web App และตั้ง Who has access เป็น Anyone");
             }
+            let parsed;
             try {
-              JSON.parse(body);
+              parsed = JSON.parse(body);
             } catch (e) {
-              console.warn("WARN: ข้อมูลจาก GAS ไม่ใช่ JSON - จะเข้ารหัสต่อตามปกติ");
+              fail("ข้อมูลจาก GAS ไม่ใช่ JSON ที่ถูกต้อง - ตรวจว่า GAS_EXPORTER_URL ลงท้าย /exec?token=รหัสลับ");
             }
+            if (parsed && !Array.isArray(parsed) && parsed.error) {
+              fail("GAS ปฏิเสธคำขอ: " + String(parsed.error) + " - ตรวจว่า GAS_EXPORTER_URL ลงท้าย ?token=รหัสลับ และตรงกับ SECRET_TOKEN ใน Apps Script");
+            }
+            if (!Array.isArray(parsed)) {
+              fail("โครงสร้างข้อมูลจาก GAS ไม่ใช่รายการ (array)");
+            }
+            if (parsed.length === 0) {
+              console.warn("WARN: ข้อมูลจาก GAS เป็นรายการว่าง");
+            }
+            console.log("จำนวนแถวข้อมูล: " + parsed.length);
             console.log("ได้ข้อมูล " + Buffer.byteLength(body, "utf8") + " bytes");
 
             const payload = encrypt(body, password);
