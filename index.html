@@ -278,6 +278,8 @@ function sendLogAsync(uid, status) {
   
   fetch(GAS_WEBAPP_URL, {
     method: "POST",
+    mode: "no-cors", // 👉 สำคัญมาก: บอกเบราว์เซอร์ให้ข้ามการเช็ก CORS
+    redirect: "follow", // 👉 สำคัญมาก: ยินยอมให้ตาม Redirect ของ Google ไปได้
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({
       uid: uid,
