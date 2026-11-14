@@ -84,6 +84,7 @@
   </div>
 
 <script>
+// URL ของ Web App คุณ (อัปเดตเรียบร้อย)
 const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxOWoamw4coVRUwr2JINdfBQL48c7xgPt3Cd0AcA76FDjxxRnWoWXLAnY9-Zqa-0jUZFg/exec";
 
 let localDatabaseMap = new Map();
@@ -332,7 +333,12 @@ function addLog(text, container) {
 }
 
 function sendLogAsync(uid, status) {
-  if (GAS_WEBAPP_URL.includes("นำ_WEB_APP_URL")) return;
+  // แก้ไขระบบตรวจสอบ URL เพื่อรองรับลิงก์ของ Google Apps Script
+  if (!GAS_WEBAPP_URL || !GAS_WEBAPP_URL.includes("script.google.com")) {
+    console.warn("GAS URL ไม่ถูกต้อง ข้อมูลจะไม่ถูกส่งไปยังเซิร์ฟเวอร์");
+    return;
+  }
+  
   fetch(GAS_WEBAPP_URL, {
     method: "POST",
     mode: "no-cors",
