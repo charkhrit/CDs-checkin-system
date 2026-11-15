@@ -660,25 +660,33 @@
     }
   }
 
+  function isLostChildFound(status) {
+    const st = String(status || "").trim();
+    if (!st) return false;
+    if (st.includes('ยังไม่') || st.includes('ไม่พบ') || st.includes('ไม่เจอ') || st.includes('รอผู้ปกครอง')) {
+      return false;
+    }
+    return st.includes('เจอ') || st.includes('พบ') || st.includes('รับกลับ') || st.includes('รับตัว') || st.includes('ส่งคืน') || st.includes('เรียบร้อย');
+  }
+
   function renderLostChildren(data) {
     const grid = document.getElementById('lostChildGrid');
     const badge = document.getElementById('lostCountBadge');
     const tickerBadge = document.getElementById('lost-ticker-badge');
     grid.innerHTML = "";
 
-    const activeMissing = data.filter(c => {
-      const st = String(c.status || "");
-      return st.includes('กำลังตามหา') || st.includes('พลัดหลง');
-    });
+    // เด็กที่ยังไม่พบผู้ปกครองทั้งหมด (ไม่ว่าจะระบุสถานะว่า กำลังตามหา / ยังไม่พบผู้ปกครอง / รออัปเดต)
+    const activeMissing = data.filter(c => !isLostChildFound(c.status));
 
     if (activeMissing.length > 0) {
       badge.innerText = activeMissing.length;
       badge.classList.remove('hidden');
       tickerBadge.innerText = `🆘 ประกาศเด็กพลัดหลง (${activeMissing.length})`;
 
-      const tickerItems = activeMissing.map(c =>
-        `<span class="mx-8">🚨 <b class="text-yellow-300">ตามหาน้อง ${escapeHtml(c.name || '-')}</b> (อายุ ${escapeHtml(c.age || '-')} ปี) | 📍 พบที่: ${escapeHtml(c.location || '-')} | 👕 ชุด/ตำหนิ: ${escapeHtml(c.details || '-')} | ⏱️ เวลา: ${escapeHtml(c.time || '-')} | <b class="text-amber-300">⛺ กรุณาติดต่อที่ เต็นท์กองอำนวยการ</b></span>`
-      ).join(`<span class="text-red-400"> ••• </span>`);
+      const tickerItems = activeMissing.map(c => {
+        const stLabel = String(c.status || "").trim() || "ยังไม่พบผู้ปกครอง";
+        return `<span class="mx-8">🚨 <span class="bg-yellow-400 text-red-950 px-2 py-0.5 rounded font-black text-xs mr-1">${escapeHtml(stLabel)}</span> <b class="text-yellow-300">น้อง ${escapeHtml(c.name || '-')}</b> (อายุ ${escapeHtml(c.age || '-')} ปี) | 📍 พบที่: ${escapeHtml(c.location || '-')} | 👕 ชุด/ตำหนิ: ${escapeHtml(c.details || '-')} | ⏱️ เวลา: ${escapeHtml(c.time || '-')} | <b class="text-amber-300">⛺ ผู้ปกครองติดต่อรับน้องได้ที่ เต็นท์กองอำนวยการ</b></span>`;
+      }).join(`<span class="text-red-400"> ••• </span>`);
       updateLostTicker("active", tickerItems);
     } else {
       badge.classList.add('hidden');
@@ -691,16 +699,14 @@
       return;
     }
 
-    // แสดงรายการที่ยังตามหาขึ้นก่อน แล้วตามด้วยรายการที่พบแล้ว (เรียงใหม่ล่าสุดขึ้นบน)
+    // แสดงรายการที่ยังไม่พบผู้ปกครองขึ้นก่อน แล้วตามด้วยรายการที่พบแล้ว (เรียงใหม่ล่าสุดขึ้นบน)
     const sortedList = [...data].reverse().sort((a, b) => {
-      const aFound = String(a.status || "").includes('เจอ') || String(a.status || "").includes('พบ');
-      const bFound = String(b.status || "").includes('เจอ') || String(b.status || "").includes('พบ');
-      return Number(aFound) - Number(bFound);
+      return Number(isLostChildFound(a.status)) - Number(isLostChildFound(b.status));
     });
 
     sortedList.forEach(child => {
-      const st = String(child.status || "");
-      const isFound = st.includes('เจอ') || st.includes('พบ');
+      const st = String(child.status || "").trim();
+      const isFound = isLostChildFound(st);
       const bClass = isFound ? 'status-found' : 'status-missing';
       const cardClass = isFound ? 'lost-mini-card found' : 'lost-mini-card';
       const imgTag = child.imgUrl
