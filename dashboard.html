@@ -299,7 +299,7 @@ function processDashboard(data) {
     let vehicle = String(row["ประเภทรถ"] || "ไม่ระบุ").trim();
     let peopleStr = String(row["จำนวนคน"] || "1").replace(/[^0-9]/g, '');
     let peopleNum = parseInt(peopleStr) || 1;
-    let isScanned = row["_isScanned"] === true || row["_isScanned"] === "true";
+    let isScanned = row["_isScanned"] === true || String(row["_isScanned"] || "").trim().toLowerCase() === "true";
     
     let stationName = row["_station"] || "";
     if (stationName.startsWith("Scanner_")) {
