@@ -154,8 +154,8 @@
     <div class="flex items-center gap-3">
       <img src="LOGO.png" alt="Logo กองบิน 46" class="h-11 rounded-lg border border-sky-500 shadow-[0_0_12px_rgba(56,189,248,0.4)]" onerror="this.style.display='none'">
       <div>
-        <h1 class="text-lg md:text-xl font-extrabold text-white drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]">กองบิน 46 พิษณุโลก — ศูนย์ควบคุมข้อมูลวันเด็กแห่งชาติ</h1>
-        <p class="text-slate-400 text-xs mt-0.5" id="lastUpdate">🔒 ระบบรักษาความปลอดภัย AES-256 (กรุณาเข้าสู่ระบบ)</p>
+        <h1 class="text-lg md:text-xl font-extrabold text-white drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]">กองบิน 46 พิษณุโลก</h1>
+        <p class="text-sky-300/90 text-xs md:text-sm font-medium mt-0.5">ระบบรายงานข้อมูลวันเด็กแห่งชาติ ปี 2570</p>
       </div>
     </div>
     
@@ -443,7 +443,6 @@
 
       const nowStr = new Date().toLocaleTimeString('th-TH');
       document.getElementById("last-update-time").innerText = nowStr;
-      document.getElementById("lastUpdate").innerText = "อัปเดตข้อมูลล่าสุด: " + nowStr;
 
       // ดึงข้อมูลเด็กพลัดหลงควบคู่กันแบบ Live
       fetchLostChildren();
@@ -486,7 +485,6 @@
     document.getElementById("page-dashboard").classList.add("hidden");
     document.getElementById("header-controls").classList.add("hidden");
     document.getElementById("login-section").classList.remove("hidden");
-    document.getElementById("lastUpdate").innerText = "🔒 ระบบรักษาความปลอดภัย AES-256 (กรุณาเข้าสู่ระบบ)";
   }
 
   function renderDashboard(data) {
