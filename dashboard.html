@@ -36,14 +36,14 @@
 
     /* ตัววิ่งประกาศเด็กพลัดหลง (Marquee Ticker) */
     .ticker-bar {
-      display: flex; align-items: center; gap: 12px;
-      border-radius: 12px; padding: 10px 14px; overflow: hidden;
+      display: flex; align-items: center; gap: 16px;
+      border-radius: 14px; padding: 16px 20px; overflow: hidden;
       transition: all 0.3s ease;
     }
     .ticker-bar.alert-active {
-      background: linear-gradient(90deg, rgba(127, 29, 29, 0.95), rgba(69, 10, 10, 0.95));
-      border: 1.5px solid #ef4444;
-      box-shadow: 0 0 24px rgba(239, 68, 68, 0.35);
+      background: linear-gradient(90deg, rgba(153, 27, 27, 0.96), rgba(69, 10, 10, 0.96));
+      border: 2px solid #f87171;
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.45);
     }
     .ticker-bar.alert-normal {
       background: rgba(6, 78, 59, 0.45);
@@ -133,12 +133,12 @@
 <div class="dashboard-container">
   
   <!-- Header -->
-  <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-sky-900/80 pb-4 gap-3">
-    <div class="flex items-center gap-4">
-      <img src="LOGO.png" alt="Logo กองบิน 46" class="h-14 rounded-lg border border-sky-500 shadow-[0_0_15px_rgba(56,189,248,0.4)]" onerror="this.style.display='none'">
+  <div class="flex flex-col md:flex-row justify-between items-center mb-3 border-b border-sky-900/80 pb-3 gap-3">
+    <div class="flex items-center gap-3">
+      <img src="LOGO.png" alt="Logo กองบิน 46" class="h-11 rounded-lg border border-sky-500 shadow-[0_0_12px_rgba(56,189,248,0.4)]" onerror="this.style.display='none'">
       <div>
-        <h1 class="text-2xl md:text-3xl font-black text-white drop-shadow-[0_0_10px_rgba(56,189,248,0.5)]">กองบิน 46 พิษณุโลก — ศูนย์ควบคุมข้อมูลวันเด็กแห่งชาติ</h1>
-        <p class="text-slate-400 text-xs md:text-sm mt-0.5" id="lastUpdate">🔒 ระบบรักษาความปลอดภัย AES-256 (กรุณาเข้าสู่ระบบ)</p>
+        <h1 class="text-lg md:text-xl font-extrabold text-white drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]">กองบิน 46 พิษณุโลก — ศูนย์ควบคุมข้อมูลวันเด็กแห่งชาติ</h1>
+        <p class="text-slate-400 text-xs mt-0.5" id="lastUpdate">🔒 ระบบรักษาความปลอดภัย AES-256 (กรุณาเข้าสู่ระบบ)</p>
       </div>
     </div>
     
@@ -178,15 +178,15 @@
 
     <!-- 🔴 แถบตัววิ่งประกาศเด็กพลัดหลง (เห็นตลอดเวลาไม่ต้องสลับหน้า) -->
     <div id="lost-ticker-bar" class="ticker-bar alert-normal">
-      <div id="lost-ticker-badge" class="shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs md:text-sm font-bold bg-emerald-600 text-white">
+      <div id="lost-ticker-badge" class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm md:text-lg font-extrabold bg-emerald-600 text-white shadow">
         ✅ ศูนย์เด็กพลัดหลง
       </div>
       <div class="ticker-wrap">
-        <div id="lost-ticker-track" class="ticker-track text-sm md:text-base font-semibold text-emerald-200">
+        <div id="lost-ticker-track" class="ticker-track text-lg md:text-2xl font-bold text-emerald-200">
           <span>กำลังตรวจสอบข้อมูลศูนย์เด็กพลัดหลง...</span>
         </div>
       </div>
-      <div class="shrink-0 hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs md:text-sm font-bold bg-slate-900/90 border border-white/20 text-amber-300">
+      <div class="shrink-0 hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full text-sm md:text-lg font-extrabold bg-slate-900/90 border border-amber-400/50 text-amber-300 shadow">
         ⛺ ติดต่อ: เต็นท์กองอำนวยการ
       </div>
     </div>
@@ -614,16 +614,16 @@
 
     if (mode === "active") {
       bar.classList.add("alert-active");
-      badge.className = "shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs md:text-sm font-bold bg-red-600 text-white animate-pulse";
-      track.className = "ticker-track text-sm md:text-base font-bold text-white";
+      badge.className = "shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm md:text-lg font-extrabold bg-red-600 text-white shadow animate-pulse";
+      track.className = "ticker-track text-xl md:text-2xl lg:text-3xl font-extrabold text-white tracking-wide";
     } else if (mode === "warn") {
       bar.classList.add("alert-warn");
-      badge.className = "shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs md:text-sm font-bold bg-amber-600 text-white";
-      track.className = "ticker-track text-sm md:text-base font-semibold text-amber-200";
+      badge.className = "shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm md:text-lg font-extrabold bg-amber-600 text-white shadow";
+      track.className = "ticker-track text-base md:text-xl font-bold text-amber-200";
     } else {
       bar.classList.add("alert-normal");
-      badge.className = "shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs md:text-sm font-bold bg-emerald-600 text-white";
-      track.className = "ticker-track text-sm md:text-base font-semibold text-emerald-200";
+      badge.className = "shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm md:text-lg font-extrabold bg-emerald-600 text-white shadow";
+      track.className = "ticker-track text-base md:text-xl font-bold text-emerald-200";
     }
 
     // วนลูปซ้ำ 2 ชุด (ความกว้างขั้นต่ำชุดละ 100%) เพื่อให้ตัววิ่งไหลต่อเนื่องไม่มีสะดุด
@@ -685,8 +685,8 @@
 
       const tickerItems = activeMissing.map(c => {
         const stLabel = String(c.status || "").trim() || "ยังไม่พบผู้ปกครอง";
-        return `<span class="mx-8">🚨 <span class="bg-yellow-400 text-red-950 px-2 py-0.5 rounded font-black text-xs mr-1">${escapeHtml(stLabel)}</span> <b class="text-yellow-300">น้อง ${escapeHtml(c.name || '-')}</b> (อายุ ${escapeHtml(c.age || '-')} ปี) | 📍 พบที่: ${escapeHtml(c.location || '-')} | 👕 ชุด/ตำหนิ: ${escapeHtml(c.details || '-')} | ⏱️ เวลา: ${escapeHtml(c.time || '-')} | <b class="text-amber-300">⛺ ผู้ปกครองติดต่อรับน้องได้ที่ เต็นท์กองอำนวยการ</b></span>`;
-      }).join(`<span class="text-red-400"> ••• </span>`);
+        return `<span class="mx-10">🚨 <span class="bg-yellow-400 text-red-950 px-2.5 py-0.5 rounded font-black text-base md:text-lg mr-2 align-middle">${escapeHtml(stLabel)}</span> <b class="text-yellow-300">น้อง ${escapeHtml(c.name || '-')}</b> (อายุ ${escapeHtml(c.age || '-')} ปี) | 📍 พบที่: ${escapeHtml(c.location || '-')} | 👕 ชุด/ตำหนิ: ${escapeHtml(c.details || '-')} | ⏱️ เวลา: ${escapeHtml(c.time || '-')} | <b class="text-amber-300">⛺ ผู้ปกครองติดต่อรับน้องได้ที่ เต็นท์กองอำนวยการ</b></span>`;
+      }).join(`<span class="text-red-300"> ••• </span>`);
       updateLostTicker("active", tickerItems);
     } else {
       badge.classList.add('hidden');
