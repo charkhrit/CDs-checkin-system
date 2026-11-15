@@ -69,15 +69,32 @@
       100% { transform: translateX(-50%); }
     }
 
-    /* การ์ดเด็กพลัดหลงแบบ Compact บนหน้าจอเดียว */
+    /* การ์ดเด็กพลัดหลงแบบ Compact + เอฟเฟกต์ Flip สับไพ่ */
+    .lost-deck-perspective {
+      perspective: 1200px;
+    }
     .lost-mini-card {
       background: rgba(69, 10, 10, 0.85); border: 1px solid #ef4444;
       border-radius: 10px; padding: 10px; display: flex; gap: 12px; align-items: flex-start;
       box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+      transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.26s ease, border-color 0.2s ease;
     }
     .lost-mini-card.found {
       background: rgba(15, 23, 42, 0.85); border-color: #22c55e;
       box-shadow: none;
+    }
+    .lost-deck-flip-out .lost-mini-card {
+      transform: rotateY(90deg) scale(0.95);
+      opacity: 0.15;
+    }
+    .lost-deck-flip-in .lost-mini-card {
+      animation: cardFlipIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes cardFlipIn {
+      0% { transform: rotateY(-90deg) scale(0.95); opacity: 0.15; }
+      100% { transform: rotateY(0deg) scale(1); opacity: 1; }
     }
     .lost-mini-card img {
       width: 72px; height: 72px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
@@ -255,20 +272,33 @@
       <!-- ฝั่งขวา (5 คอลัมน์): การ์ดเด็กพลัดหลง + 5 รายการผู้เข้าร่วมล่าสุด -->
       <div class="xl:col-span-5 flex flex-col gap-4">
 
-        <!-- ศูนย์ประกาศเด็กพลัดหลง (อยู่ด้านบนสุดของฝั่งขวา) -->
+        <!-- ศูนย์ประกาศเด็กพลัดหลง (แสดงทีละ 2 รายการ พร้อม Flip สับไพ่และปุ่มหยุดดู) -->
         <div class="card flex flex-col border-red-500/30">
-          <div class="flex items-center justify-between mb-3 gap-2">
+          <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
             <h2 class="text-base font-bold text-red-400 flex items-center gap-2">
               🆘 ประกาศเด็กพลัดหลง
               <span id="lostCountBadge" class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
             </h2>
-            <span class="text-xs font-bold text-amber-300 bg-amber-950/60 border border-amber-600/40 px-2.5 py-1 rounded-full">
-              ⛺ ติดต่อ: เต็นท์กองอำนวยการ
-            </span>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <div id="lost-flip-controls" class="hidden">
+                <div class="flex items-center gap-1 bg-slate-900/90 border border-slate-700 px-2 py-0.5 rounded-full text-xs">
+                  <button onclick="stepLostPage(-1)" title="หน้าก่อนหน้า" class="px-1.5 py-0.5 text-slate-300 hover:text-white cursor-pointer">◀</button>
+                  <span id="lost-page-info" class="text-sky-300 font-bold px-1">1/1</span>
+                  <button onclick="stepLostPage(1)" title="หน้าถัดไป" class="px-1.5 py-0.5 text-slate-300 hover:text-white cursor-pointer">▶</button>
+                  <button id="lost-flip-toggle" onclick="toggleLostFlipPause()" class="ml-1 px-2 py-0.5 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white font-bold cursor-pointer transition">⏸️ หยุดดู</button>
+                </div>
+              </div>
+              <span class="text-xs font-bold text-amber-300 bg-amber-950/60 border border-amber-600/40 px-2.5 py-1 rounded-full">
+                ⛺ ติดต่อ: เต็นท์กองอำนวยการ
+              </span>
+            </div>
           </div>
 
-          <div id="lostChildGrid" class="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+          <div id="lostChildGrid" onclick="if(lostAllItems.length > LOST_PAGE_SIZE) toggleLostFlipPause()" title="คลิกเพื่อหยุดดูหรือเล่นต่อ" class="lost-deck-perspective space-y-2.5 min-h-[150px] cursor-pointer">
             <div class="text-center text-slate-400 text-sm py-6">กำลังโหลดข้อมูลเด็กพลัดหลง...</div>
+          </div>
+          <div id="lost-flip-hint" class="hidden mt-2 text-[11px] text-slate-400 text-center">
+            🃏 แสดงทีละ 2 รายการ สับไพ่อัตโนมัติทุก 5 วินาที (คลิกที่การ์ดหรือกดปุ่ม ⏸️ เพื่อหยุดอ่าน)
           </div>
         </div>
         
@@ -311,6 +341,15 @@
   let lastCheckedInCount = -1;
   let charts = { checkin: null, gender: null };
   const colors = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#c084fc', '#fb923c'];
+
+  // ตัวแปรควบคุมการ Flip แสดงเด็กพลัดหลงทีละ 2 รายการ
+  let lostAllItems = [];
+  let lostPageIndex = 0;
+  let lostFlipTimer = null;
+  let isLostFlipPaused = false;
+  let lostIsFlipping = false;
+  const LOST_PAGE_SIZE = 2;
+  const LOST_FLIP_INTERVAL_MS = 5000;
 
   Chart.defaults.color = '#94a3b8';
   Chart.defaults.borderColor = '#334155';
@@ -435,6 +474,13 @@
       clearInterval(autoRefreshInterval);
       autoRefreshInterval = null;
     }
+    if (lostFlipTimer) {
+      clearInterval(lostFlipTimer);
+      lostFlipTimer = null;
+    }
+    isLostFlipPaused = false;
+    lostPageIndex = 0;
+    lostAllItems = [];
     document.getElementById("passphrase").value = "";
     document.getElementById("login-status").innerText = "";
     document.getElementById("page-dashboard").classList.add("hidden");
@@ -652,6 +698,10 @@
       renderLostChildren(list);
     } catch (err) {
       console.warn("Lost Child API warning:", err.message);
+      lostAllItems = [];
+      if (lostFlipTimer) { clearInterval(lostFlipTimer); lostFlipTimer = null; }
+      document.getElementById("lost-flip-controls").classList.add("hidden");
+      document.getElementById("lost-flip-hint").classList.add("hidden");
       badge.classList.add("hidden");
       tickerBadge.innerText = "⚠️ ศูนย์เด็กพลัดหลง";
       updateLostTicker("warn", `<span class="mx-8">⚠️ กำลังรอเชื่อมต่อข้อมูลประกาศเด็กพลัดหลงจาก Apps Script (${escapeHtml(err.message)}) — หากพบเห็นเด็กพลัดหลง กรุณาติดต่อที่ เต็นท์กองอำนวยการ</span>`);
@@ -668,11 +718,127 @@
     return st.includes('เจอ') || st.includes('พบ') || st.includes('รับกลับ') || st.includes('รับตัว') || st.includes('ส่งคืน') || st.includes('เรียบร้อย');
   }
 
+  function updateLostFlipControls() {
+    const controlsEl = document.getElementById("lost-flip-controls");
+    const hintEl = document.getElementById("lost-flip-hint");
+    const pageInfoEl = document.getElementById("lost-page-info");
+    const toggleBtn = document.getElementById("lost-flip-toggle");
+    const totalPages = Math.max(1, Math.ceil(lostAllItems.length / LOST_PAGE_SIZE));
+
+    if (lostAllItems.length > LOST_PAGE_SIZE) {
+      controlsEl.classList.remove("hidden");
+      hintEl.classList.remove("hidden");
+      pageInfoEl.innerText = `${lostPageIndex + 1}/${totalPages}`;
+      if (isLostFlipPaused) {
+        toggleBtn.innerText = "▶️ เล่นต่อ";
+        toggleBtn.className = "ml-1 px-2 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer transition";
+        hintEl.innerText = "⏸️ หยุดค้างหน้านี้ไว้ชั่วคราว (กด ▶️ เล่นต่อ หรือคลิกที่การ์ดเพื่อหมุนสับไพ่ต่อ)";
+      } else {
+        toggleBtn.innerText = "⏸️ หยุดดู";
+        toggleBtn.className = "ml-1 px-2 py-0.5 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white font-bold cursor-pointer transition";
+        hintEl.innerText = "🃏 แสดงทีละ 2 รายการ สับไพ่อัตโนมัติทุก 5 วินาที (คลิกที่การ์ดหรือกดปุ่ม ⏸️ เพื่อหยุดอ่าน)";
+      }
+    } else {
+      controlsEl.classList.add("hidden");
+      hintEl.classList.add("hidden");
+    }
+  }
+
+  function renderLostPageCards(animateFlip) {
+    const grid = document.getElementById("lostChildGrid");
+    if (!lostAllItems.length) return;
+
+    const totalPages = Math.max(1, Math.ceil(lostAllItems.length / LOST_PAGE_SIZE));
+    if (lostPageIndex >= totalPages) lostPageIndex = 0;
+
+    const start = lostPageIndex * LOST_PAGE_SIZE;
+    const pageItems = lostAllItems.slice(start, start + LOST_PAGE_SIZE);
+
+    let html = "";
+    pageItems.forEach(child => {
+      const st = String(child.status || "").trim();
+      const isFound = isLostChildFound(st);
+      const bClass = isFound ? 'status-found' : 'status-missing';
+      const cardClass = isFound ? 'lost-mini-card found' : 'lost-mini-card';
+      const imgTag = child.imgUrl
+        ? `<img src="${escapeHtml(child.imgUrl)}" alt="รูปน้อง" onerror="this.style.display='none'">`
+        : '';
+
+      html += `
+        <div class="${cardClass}">
+          ${imgTag}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <h3 class="text-sm font-bold text-white truncate">น้อง ${escapeHtml(child.name || '-')} (${escapeHtml(child.age || '-')} ปี)</h3>
+              <span class="status-badge ${bClass} shrink-0">${escapeHtml(st || 'รออัปเดต')}</span>
+            </div>
+            <div class="text-slate-300 text-xs space-y-0.5">
+              <p class="truncate">📍 <b>จุดที่พบ:</b> ${escapeHtml(child.location || '-')}</p>
+              <p class="truncate">👕 <b>ชุด/ตำหนิ:</b> ${escapeHtml(child.details || '-')}</p>
+              <p>⏱️ <b>เวลา:</b> ${escapeHtml(child.time || '-')} <span class="text-amber-300 font-semibold">| ติดต่อ: เต็นท์กองอำนวยการ</span></p>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    grid.classList.remove("lost-deck-flip-out", "lost-deck-flip-in");
+    grid.innerHTML = html;
+
+    if (animateFlip) {
+      // บังคับ reflow เพื่อให้ animation เล่นซ้ำทุกครั้งที่พลิกการ์ด
+      void grid.offsetWidth;
+      grid.classList.add("lost-deck-flip-in");
+      setTimeout(() => {
+        grid.classList.remove("lost-deck-flip-in");
+        lostIsFlipping = false;
+      }, 360);
+    }
+
+    updateLostFlipControls();
+  }
+
+  function stepLostPage(delta) {
+    const totalPages = Math.ceil(lostAllItems.length / LOST_PAGE_SIZE);
+    if (totalPages <= 1 || lostIsFlipping) return;
+
+    lostIsFlipping = true;
+    const grid = document.getElementById("lostChildGrid");
+    grid.classList.remove("lost-deck-flip-in");
+    grid.classList.add("lost-deck-flip-out");
+
+    setTimeout(() => {
+      lostPageIndex = (lostPageIndex + delta + totalPages) % totalPages;
+      renderLostPageCards(true);
+    }, 260);
+
+    // รีเซ็ตเวลานับถอยหลังเมื่อผู้ใช้กดเปลี่ยนหน้าเอง
+    startLostFlipTimer();
+  }
+
+  function toggleLostFlipPause() {
+    if (lostAllItems.length <= LOST_PAGE_SIZE) return;
+    isLostFlipPaused = !isLostFlipPaused;
+    updateLostFlipControls();
+    startLostFlipTimer();
+  }
+
+  function startLostFlipTimer() {
+    if (lostFlipTimer) {
+      clearInterval(lostFlipTimer);
+      lostFlipTimer = null;
+    }
+    if (lostAllItems.length > LOST_PAGE_SIZE && !isLostFlipPaused) {
+      lostFlipTimer = setInterval(() => {
+        stepLostPage(1);
+      }, LOST_FLIP_INTERVAL_MS);
+    }
+  }
+
   function renderLostChildren(data) {
     const grid = document.getElementById('lostChildGrid');
     const badge = document.getElementById('lostCountBadge');
     const tickerBadge = document.getElementById('lost-ticker-badge');
-    grid.innerHTML = "";
 
     // เด็กที่ยังไม่พบผู้ปกครองทั้งหมด (ไม่ว่าจะระบุสถานะว่า กำลังตามหา / ยังไม่พบผู้ปกครอง / รออัปเดต)
     const activeMissing = data.filter(c => !isLostChildFound(c.status));
@@ -694,41 +860,20 @@
     }
 
     if (data.length === 0) {
+      lostAllItems = [];
+      if (lostFlipTimer) { clearInterval(lostFlipTimer); lostFlipTimer = null; }
+      updateLostFlipControls();
       grid.innerHTML = '<div class="text-center text-green-400 text-sm py-8 font-bold bg-emerald-950/20 border border-emerald-700/30 rounded-lg">🎉 ข่าวดี! ขณะนี้ไม่มีรายงานเด็กพลัดหลง<br><span class="text-slate-300 font-normal text-xs">จุดประสานงาน: เต็นท์กองอำนวยการ</span></div>';
       return;
     }
 
     // แสดงรายการที่ยังไม่พบผู้ปกครองขึ้นก่อน แล้วตามด้วยรายการที่พบแล้ว (เรียงใหม่ล่าสุดขึ้นบน)
-    const sortedList = [...data].reverse().sort((a, b) => {
+    lostAllItems = [...data].reverse().sort((a, b) => {
       return Number(isLostChildFound(a.status)) - Number(isLostChildFound(b.status));
     });
 
-    sortedList.forEach(child => {
-      const st = String(child.status || "").trim();
-      const isFound = isLostChildFound(st);
-      const bClass = isFound ? 'status-found' : 'status-missing';
-      const cardClass = isFound ? 'lost-mini-card found' : 'lost-mini-card';
-      const imgTag = child.imgUrl
-        ? `<img src="${escapeHtml(child.imgUrl)}" alt="รูปน้อง" onerror="this.style.display='none'">`
-        : '';
-
-      grid.innerHTML += `
-        <div class="${cardClass}">
-          ${imgTag}
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between gap-2 mb-1">
-              <h3 class="text-sm font-bold text-white truncate">น้อง ${escapeHtml(child.name || '-')} (${escapeHtml(child.age || '-')} ปี)</h3>
-              <span class="status-badge ${bClass} shrink-0">${escapeHtml(st || 'รออัปเดต')}</span>
-            </div>
-            <div class="text-slate-300 text-xs space-y-0.5">
-              <p class="truncate">📍 <b>จุดที่พบ:</b> ${escapeHtml(child.location || '-')}</p>
-              <p class="truncate">👕 <b>ชุด/ตำหนิ:</b> ${escapeHtml(child.details || '-')}</p>
-              <p>⏱️ <b>เวลา:</b> ${escapeHtml(child.time || '-')} <span class="text-amber-300 font-semibold">| ติดต่อ: เต็นท์กองอำนวยการ</span></p>
-            </div>
-          </div>
-        </div>
-      `;
-    });
+    renderLostPageCards(false);
+    startLostFlipTimer();
   }
 </script>
 </body>
