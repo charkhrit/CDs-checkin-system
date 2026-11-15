@@ -210,16 +210,18 @@ async function manualForceSync() {
 
 // 👉 ฟังก์ชันล้างประวัติขยะและหน่วยความจำของเครื่อง (Clear Cache & DOM Logs)
 function clearLocalCache() {
-  if (confirm("⚠️ คุณต้องการล้างประวัติและข้อมูลขยะในเครื่องนี้ใช่หรือไม่?\n(ประวัติการสแกนบนหน้าจอจะถูกเคลียร์เพื่อลดการกินแรม)")) {
+  if (confirm("⚠️ คุณต้องการล้างประวัติและข้อมูลขยะในเครื่องนี้ใช่หรือไม่?\n(ประวัติการสแกนบนหน้าจอและประวัติการสแกนที่จำไว้ในเครื่องนี้จะถูกรีเซ็ตใหม่ทั้งหมด)")) {
     // 1. ล้างกล่องแสดงผล Logs บนหน้าจอไม่ให้ DOM บวม
     const recentLogs = document.getElementById("recent-logs");
     recentLogs.innerHTML = "";
     
-    // 2. ล้างข้อมูลขยะใน RAM Map ชั่วคราว
+    // 2. ล้างข้อมูลขยะใน RAM Map และล้างประวัติสแกนในเครื่อง
     localDatabaseMap.clear();
+    scannedSet.clear();
+    localStorage.removeItem("scannedSet");
 
     // 3. แจ้งเตือนและบังคับดึงข้อมูลใหม่ทันที
-    alert("🧹 เคลียร์ข้อมูลขยะเรียบร้อยแล้ว ระบบกำลังดึงข้อมูลสดใหม่อีกครั้ง");
+    alert("🧹 เคลียร์ข้อมูลขยะและรีเซ็ตประวัติการสแกนเรียบร้อยแล้ว ระบบกำลังดึงข้อมูลสดใหม่อีกครั้ง");
     manualForceSync();
   }
 }
@@ -264,7 +266,7 @@ function onScanSuccess(decodedText) {
     const countPeople = record["จำนวนคน"] || "1";
     
     const isLocalScanned = scannedSet.has(uid);
-    const isServerScanned = record["_isScanned"] === true || record["_isScanned"] === "true";
+    const isServerScanned = record["_isScanned"] === true || String(record["_isScanned"] || "").trim().toLowerCase() === "true";
 
     if (isLocalScanned || isServerScanned) {
       resBox.className = "warning";
