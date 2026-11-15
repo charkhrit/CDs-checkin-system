@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - กองบิน 46 พิษณุโลก (Outdoor Responsive)</title>
-  <!-- โหลดไลบรารี Chart.js -->
+  <title>Dashboard - กองบิน 46 (Live & Lost Child)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { 
@@ -12,433 +12,231 @@
       --card-bg: rgba(15, 23, 42, 0.9); 
       --border-glow: rgba(56, 189, 248, 0.4); 
       --text-main: #f8fafc; 
-      --text-muted: #94a3b8; 
-      --accent-blue: #38bdf8;
-      --accent-green: #4ade80;
     }
-    * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-space); color: var(--text-main); margin: 0; padding: 10px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-space); color: var(--text-main); min-height: 100vh; padding: 20px; }
     
-    /* กรอบ 16:9 เรืองแสงสู้แสงจ้า */
     .dashboard-container { 
-      width: 100%; 
-      max-width: 1700px; 
-      min-height: 95vh;
+      width: 100%; max-width: 1600px; margin: 0 auto;
       background: radial-gradient(circle at top, #1e293b 0%, #030712 100%); 
-      border-radius: 16px; 
-      padding: 16px; 
+      border-radius: 16px; padding: 20px; 
       box-shadow: 0 0 40px rgba(56, 189, 248, 0.15); 
-      display: flex; 
-      flex-direction: column; 
       border: 2px solid var(--border-glow); 
     }
+
+    .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 12px; padding: 20px; border: 1px solid rgba(56, 189, 248, 0.2); }
     
-    /* ส่วนหัว */
-    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(56, 189, 248, 0.3); padding-bottom: 12px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-    .logo-title { display: flex; align-items: center; gap: 15px; }
-    .logo-title img { height: 60px; width: auto; border-radius: 8px; box-shadow: 0 0 12px rgba(56, 189, 248, 0.5); border: 1px solid var(--accent-blue); }
-    .header h1 { margin: 0; font-size: clamp(1.5rem, 2.5vw, 2.3rem); color: #ffffff; font-weight: 900; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+    /* สไตล์ปุ่มเปลี่ยนแท็บ */
+    .tab-btn { padding: 12px 24px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s; border: 1px solid transparent; }
+    .tab-active { background: #0284c7; color: white; border-color: #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.5); }
+    .tab-inactive { background: transparent; color: #94a3b8; border-color: #334155; }
+    .tab-inactive:hover { background: #1e293b; color: white; }
 
-    /* หน้าจอ Login */
-    #login-section { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; }
-    #login-section input { width: 100%; max-width: 400px; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 2px solid var(--accent-blue); background: #0b0f19; color: white; font-size: 18px; text-align: center; }
-    #login-section button { width: 100%; max-width: 400px; padding: 15px; border-radius: 10px; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; font-size: 18px; font-weight: bold; cursor: pointer; }
-
-    /* โครงสร้าง Grid 2 ฝั่ง */
-    .main-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; flex: 1; }
-    @media (max-width: 1024px) {
-      .main-grid { grid-template-columns: 1fr; }
-      .dashboard-container { height: auto; }
-    }
-
-    .column { display: flex; flex-direction: column; gap: 16px; }
+    /* สไตล์การ์ดเด็กพลัดหลง */
+    .lost-card { background: #450a0a; border: 1px solid #ef4444; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+    .lost-card img { width: 100%; height: 200px; object-fit: cover; border-bottom: 2px solid #ef4444; }
+    .lost-card .info { padding: 15px; }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px; }
+    .status-missing { background: #ef4444; color: white; animation: pulseRed 2s infinite; }
+    .status-found { background: #22c55e; color: white; }
     
-    .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 12px; padding: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); display: flex; flex-direction: column; }
-    .card h3 { margin: 0 0 12px 0; font-size: 1.2rem; color: #38bdf8; border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 6px; font-weight: 700; }
-
-    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .stat-box { background: rgba(15, 23, 42, 0.9); padding: 12px; border-radius: 8px; text-align: center; border: 1px solid rgba(56, 189, 248, 0.3); }
-    .stat-title { font-size: 0.95rem; color: var(--text-muted); font-weight: bold; }
-    .stat-value { font-size: clamp(2rem, 3vw, 3rem); font-weight: 900; color: #38bdf8; margin-top: 5px; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
-    .stat-value.success { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
-
-    .chart-container { position: relative; width: 100%; height: 240px; display: flex; justify-content: center; align-items: center; }
-
-    .table-responsive { width: 100%; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; white-space: nowrap; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(56, 189, 248, 0.15); }
-    th { background: rgba(15, 23, 42, 0.95); color: #38bdf8; font-weight: bold; }
-    td { color: #f1f5f9; }
-
-    .pdpa-notice { font-size: 0.85rem; color: #fca5a5; background: rgba(127, 29, 29, 0.3); padding: 8px; border-radius: 6px; text-align: center; border: 1px solid rgba(153, 27, 27, 0.5); margin-top: 12px; }
-    
-    .refresh-badge { font-size: 0.9rem; color: #38bdf8; background: rgba(3, 105, 161, 0.3); padding: 6px 12px; border-radius: 20px; border: 1px solid #0284c7; display: flex; align-items: center; gap: 6px; }
-
-    /* 🎈 Popup การ์ตูนเด็กยิ้มน่ารักๆ บน Dashboard */
-    #dashboard-popup {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(3, 7, 18, 0.8); backdrop-filter: blur(6px);
-      display: none; justify-content: center; align-items: center; z-index: 9999;
-    }
-    .popup-box {
-      background: #1e293b; width: 90%; max-width: 420px; padding: 35px 20px;
-      border-radius: 24px; text-align: center; box-shadow: 0 0 50px rgba(74, 222, 128, 0.4);
-      animation: bounceInDashboard 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-      border: 3px solid #4ade80;
-    }
-    @keyframes bounceInDashboard {
-      0% { transform: scale(0.3); opacity: 0; }
-      50% { transform: scale(1.08); opacity: 1; }
-      70% { transform: scale(0.95); }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .popup-icon { font-size: 90px; margin-bottom: 15px; animation: smileAnim 1.2s infinite alternate; }
-    @keyframes smileAnim {
-      0% { transform: scale(1) rotate(-5deg); }
-      100% { transform: scale(1.1) rotate(5deg); }
-    }
+    @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
   </style>
 </head>
 <body>
 
-  <!-- 🎈 Popup การ์ตูนเด็กยิ้มต้อนรับบน Dashboard -->
-  <div id="dashboard-popup">
-    <div class="popup-box">
-      <div class="popup-icon">👦🎉</div>
-      <h2 style="color: #4ade80; font-size: 2rem; margin: 0 0 10px 0; text-shadow: 0 0 10px rgba(74,222,128,0.5);">มีผู้เข้าร่วมงานเช็กอินใหม่!</h2>
-      <p style="color: #f8fafc; font-size: 1.3rem; margin: 0 0 15px 0;" id="dash-popup-name">คุณ ... เช็กอินเข้างานแล้ว</p>
-      <div><span style="background: rgba(74,222,128,0.2); color: #4ade80; padding: 8px 16px; border-radius: 20px; font-size: 1rem; font-weight: bold; border: 1px solid #4ade80;">ยินดีต้อนรับสู่งานวันเด็ก บน.46</span></div>
-    </div>
-  </div>
-
 <div class="dashboard-container">
   
-  <!-- ส่วนหัว -->
-  <div class="header">
-    <div class="logo-title">
-      <img src="LOGO.png" alt="Logo Wing 46">
+  <!-- Header & Tabs -->
+  <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b-2 border-sky-900 pb-6 gap-4">
+    <div class="flex items-center gap-4">
+      <img src="LOGO.png" alt="Logo" class="h-16 rounded-lg border border-sky-500 shadow-[0_0_15px_rgba(56,189,248,0.4)]" onerror="this.src='https://via.placeholder.com/60?text=LOGO'">
       <div>
-        <h1>กองบิน 46 พิษณุโลก</h1>
+        <h1 class="text-3xl md:text-4xl font-black text-white drop-shadow-[0_0_10px_rgba(56,189,248,0.5)]">กองบิน 46 พิษณุโลก</h1>
+        <p class="text-slate-400 mt-1" id="lastUpdate">อัปเดตข้อมูลล่าสุด: กำลังโหลด...</p>
       </div>
     </div>
-    <div id="header-status" style="display:none;">
-      <div class="refresh-badge">
-        <span>🟢 Live อัตโนมัติ | ล่าสุด: <span id="last-update-time" style="font-weight: bold;">-</span></span>
-        <button onclick="forceRefresh()" style="background: #0284c7; color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; cursor: pointer; margin-left: 6px;">⚡ รีเฟรช</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- หน้าจอ Login -->
-  <div id="login-section" class="card" style="flex:1;">
-    <h2 style="color: #38bdf8; font-size: 1.8rem; margin-top:0;">🔒 ยืนยันสิทธิ์ผู้ดูแลระบบ</h2>
-    <p style="color: var(--text-muted); font-size: 1rem; margin-bottom: 20px;">กรุณากรอกรหัสผ่านหลักเพื่อเปิดใช้งานแดชบอร์ด</p>
-    <input type="password" id="passphrase" placeholder="MASTER PASSPHRASE">
-    <button onclick="loadData()">เข้าสู่ระบบ Dashboard</button>
-    <div id="status" style="margin-top: 15px; color: #ef4444; font-size: 1rem; font-weight: bold;"></div>
-  </div>
-
-  <!-- เนื้อหาหลัก 2 ฝั่ง -->
-  <div id="dashboard-section" class="main-grid" style="display:none;">
     
-    <!-- ฝั่งซ้าย -->
-    <div class="column">
-      <div class="card">
-        <div class="stat-grid">
-          <div class="stat-box">
-            <div class="stat-title">ลงทะเบียนทั้งหมด</div>
-            <div class="stat-value" id="val-total-reg">0</div>
-          </div>
-          <div class="stat-box" style="border-color: rgba(74, 222, 128, 0.4);">
-            <div class="stat-title" style="color: #4ade80;">เช็กอินเข้างานแล้ว</div>
-            <div class="stat-value success" id="val-checked-in">0</div>
-          </div>
-        </div>
-      </div>
+    <div class="flex gap-2">
+      <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn tab-active">📊 สรุปยอดงานวันเด็ก</button>
+      <button onclick="switchTab('lost')" id="tab-lost" class="tab-btn tab-inactive flex items-center gap-2">
+        📢 ประกาศเด็กพลัดหลง <span id="lostCountBadge" class="bg-red-500 text-white text-xs px-2 py-1 rounded-full hidden">0</span>
+      </button>
+    </div>
+  </div>
 
-      <div class="card" style="flex: 1;">
-        <h3>📊 สัดส่วนการเช็กอินเข้างาน</h3>
-        <div class="chart-container">
-          <canvas id="stationChart"></canvas>
-        </div>
+  <!-- ==================== หน้าที่ 1: Dashboard (ของเดิม) ==================== -->
+  <div id="page-dashboard">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="card border-l-4 border-l-sky-400 text-center md:text-left">
+        <h2 class="text-slate-400 text-sm uppercase font-bold">คิวที่เช็กอินสำเร็จ (กลุ่ม)</h2>
+        <div class="text-5xl font-black text-white mt-2" id="sumGroups">0</div>
+      </div>
+      <div class="card border-l-4 border-l-green-400 text-center md:text-left">
+        <h2 class="text-slate-400 text-sm uppercase font-bold">จำนวนคนเข้าร่วม (รวมผู้ติดตาม)</h2>
+        <div class="text-5xl font-black text-green-400 mt-2" id="sumPeople">0 <span class="text-xl text-slate-400 font-normal">คน</span></div>
       </div>
     </div>
 
-    <!-- ฝั่งขวา -->
-    <div class="column">
-      <div class="card">
-        <h3>🚗 สถิติประเภทรถที่ลงทะเบียน</h3>
-        <div class="table-responsive" style="max-height: 160px; overflow-y: auto;">
-          <table id="vehicle-table">
-            <thead>
-              <tr>
-                <th>ประเภทรถ</th>
-                <th style="text-align: right;">จำนวน (คัน)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- ข้อมูลรถ -->
-            </tbody>
-          </table>
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="card lg:col-span-2">
+        <h2 class="text-lg font-bold text-sky-300 mb-4">📈 ความหนาแน่นตามช่วงเวลา (ทุก 30 นาที)</h2>
+        <div class="relative h-64 md:h-80"><canvas id="timeChart"></canvas></div>
       </div>
-
-      <div class="card" style="flex: 1;">
-        <h3>👥 5 รายการผู้เข้าร่วมล่าสุด (PDPA Masked)</h3>
-        <div class="table-responsive">
-          <table id="guest-table">
-            <thead>
-              <tr>
-                <th>รหัส (UID)</th>
-                <th>ชื่อ - นามสกุล</th>
-                <th style="text-align: center;">มาด้วยกัน</th>
-                <th style="text-align: center;">สถานะ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- ข้อมูลรายชื่อ 5 คนล่าสุด -->
-            </tbody>
-          </table>
+      <div class="grid grid-cols-1 gap-6">
+        <div class="card">
+          <h2 class="text-lg font-bold text-pink-300 mb-4">👥 สัดส่วนเพศ</h2>
+          <div class="relative h-48"><canvas id="genderChart"></canvas></div>
         </div>
-        
-        <div class="pdpa-notice">
-          🔒 <b>PDPA Compliant:</b> ข้อมูลส่วนบุคคลถูกเข้ารหัสและปกปิดชื่อบางส่วนตามกฎหมาย
+        <div class="card">
+          <h2 class="text-lg font-bold text-amber-300 mb-4">🚗 สัดส่วนรถที่ลงทะเบียน</h2>
+          <div class="relative h-48"><canvas id="vehicleChart"></canvas></div>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- ==================== หน้าที่ 2: ประกาศเด็กพลัดหลง ==================== -->
+  <div id="page-lost" style="display: none;">
+    <div class="bg-red-950/40 border border-red-500/50 rounded-xl p-6 mb-6 text-center">
+      <h2 class="text-2xl font-bold text-red-400 mb-2">🆘 ศูนย์ช่วยเหลือเด็กพลัดหลง กองบิน 46</h2>
+      <p class="text-slate-300">หากผู้ปกครองท่านใดพลัดหลงกับบุตรหลาน หรือพบเห็นเด็กพลัดหลง โปรดติดต่อ <span class="font-bold text-white">กองอำนวยการ (เต็นท์พยาบาล)</span> ทันที</p>
+    </div>
+
+    <!-- Grid แสดงการ์ดเด็ก -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="lostChildGrid">
+      <div class="col-span-full text-center text-slate-400 py-10">
+        กำลังโหลดข้อมูล...
+      </div>
+    </div>
   </div>
 
 </div>
 
 <script>
-let autoRefreshInterval = null;
-let myChart = null;
-let lastCheckedInCount = -1; // ตัวแปรจำยอดเช็กอินเดิมไว้เทียบเพื่อเด้ง Popup
-
-function hexToBytes(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
-
-async function deriveKey(passphrase, saltHex) {
-  const enc = new TextEncoder();
-  const salt = hexToBytes(saltHex);
-  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-  return await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 }, false, ["decrypt"]
-  );
-}
-
-async function decryptPayload(payload, passphrase) {
-  const key = await deriveKey(passphrase, payload.salt);
-  const cipherWithTag = new Uint8Array(hexToBytes(payload.ciphertext).length + hexToBytes(payload.authTag).length);
-  cipherWithTag.set(hexToBytes(payload.ciphertext));
-  cipherWithTag.set(hexToBytes(payload.authTag), hexToBytes(payload.ciphertext).length);
-  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hexToBytes(payload.iv), tagLength: 128 }, key, cipherWithTag);
-  return JSON.parse(new TextDecoder().decode(decrypted));
-}
-
-function maskName(str) {
-  if (!str || str.length <= 1) return str || "-";
-  return str.charAt(0) + "xxx" + (str.length > 5 ? str.charAt(str.length-1) : "");
-}
-
-function maskUID(str) {
-  if (!str) return "-";
-  return str.substring(0, 4) + "****" + str.substring(str.length - 4);
-}
-
-let savedPassphrase = "";
-
-async function loadData() {
-  const pwdInput = document.getElementById("passphrase");
-  const pwd = savedPassphrase || (pwdInput ? pwdInput.value.trim() : "");
-  const statEl = document.getElementById("status");
-  if (!pwd) return statEl ? statEl.innerText = "กรุณากรอกรหัสผ่าน" : null;
+  // 🟢 ใส่ลิงก์ Web App URL ของคุณที่นี่
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyJcwco5WJheq2zR7Y9FUIl0HvnG3mz6Cv7UcUmB6v07z3tHlr6wfEjbMT-qiHR7nrw8A/exec?token=xxxxxxx";
   
-  if (!autoRefreshInterval && statEl) statEl.innerText = "กำลังดาวน์โหลดและถอดรหัสข้อมูล...";
-  
-  try {
-    const res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("โหลดไฟล์ไม่สำเร็จ");
-    const payload = await res.json();
-    let rawData = await decryptPayload(payload, pwd);
-    
-    if (rawData && !Array.isArray(rawData)) rawData = rawData.data || rawData.rows || rawData.records;
-    
-    savedPassphrase = pwd;
-    processDashboard(rawData);
-    
-    document.getElementById("login-section").style.display = "none";
-    document.getElementById("dashboard-section").style.display = "grid";
-    document.getElementById("header-status").style.display = "block";
-    
-    document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString('th-TH');
+  let charts = { time: null, gender: null, vehicle: null };
+  const colors = { blue: '#38bdf8', pink: '#f472b6', green: '#4ade80', yellow: '#facc15', purple: '#c084fc' };
+  Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
 
-    if (!autoRefreshInterval) {
-      autoRefreshInterval = setInterval(loadData, 20000); // 🟢 ตรวจสอบข้อมูลใหม่ทุก 20 วินาที
-    }
+  function switchTab(tabName) {
+    document.getElementById('page-dashboard').style.display = tabName === 'dashboard' ? 'block' : 'none';
+    document.getElementById('page-lost').style.display = tabName === 'lost' ? 'block' : 'none';
     
-  } catch(e) {
-    if (!autoRefreshInterval && statEl) {
-      statEl.innerText = "❌ รหัสผ่านไม่ถูกต้อง หรือไฟล์ข้อมูลผิดพลาด";
-    }
+    document.getElementById('tab-dashboard').className = tabName === 'dashboard' ? 'tab-btn tab-active' : 'tab-btn tab-inactive';
+    
+    let lostBtnClass = tabName === 'lost' ? 'tab-btn tab-active flex items-center gap-2' : 'tab-btn tab-inactive flex items-center gap-2';
+    document.getElementById('tab-lost').className = lostBtnClass;
   }
-}
 
-async function forceRefresh() {
-  const timeEl = document.getElementById("last-update-time");
-  if (timeEl) timeEl.innerText = "กำลังดึงข้อมูล...";
-  await loadData();
-}
+  function roundTo30Min(dateStr) {
+    let d = new Date(dateStr);
+    if(isNaN(d.getTime())) return "ไม่ระบุ";
+    d.setMinutes(d.getMinutes() < 30 ? 0 : 30);
+    return d.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+  }
 
-function processDashboard(data) {
-  let totalPeopleCount = 0;
-  let checkedInPeopleCount = 0;
-  let vehicleStats = {};
-  let guestHtml = "";
-  let latestCheckedInName = "";
-  
-  const reversedData = [...data].reverse();
-
-  reversedData.forEach((row, index) => {
-    let keys = Object.keys(row);
-    let uidKey = keys.find(k => ['ID', 'UID'].includes(k.trim().toUpperCase())) || keys[0];
+  // 🟢 โหลดข้อมูลพร้อมกันทั้ง 2 ส่วน
+  function fetchAllData() {
+    document.getElementById('lastUpdate').innerText = "อัปเดตข้อมูลล่าสุด: กำลังโหลด...";
     
-    let uid = String(row[uidKey]).trim();
-    let name = row["ชื่อ"] || "";
-    let surname = row["นามสกุล"] || "";
-    let vehicle = String(row["ประเภทรถ"] || "ไม่ระบุ").trim();
-    let peopleStr = String(row["จำนวนคน"] || "1").replace(/[^0-9]/g, '');
-    let peopleNum = parseInt(peopleStr) || 1;
-    let isScanned = row["_isScanned"] === true || String(row["_isScanned"] || "").trim().toLowerCase() === "true";
+    // ดึง Dashboard
+    fetch(GAS_URL + "&action=getDashboardData", { redirect: 'follow' })
+      .then(res => res.json())
+      .then(res => { if(!res.error) renderDashboard(res.data || []); })
+      .catch(err => console.error("Dash Error:", err));
+
+    // ดึงเด็กหาย
+    fetch(GAS_URL + "&action=getLostChild", { redirect: 'follow' })
+      .then(res => res.json())
+      .then(res => { if(!res.error) renderLostChildren(res.data || []); })
+      .catch(err => console.error("Lost Error:", err));
+      
+    document.getElementById('lastUpdate').innerText = "อัปเดตข้อมูลล่าสุด: " + new Date().toLocaleTimeString('th-TH');
+  }
+
+  // 🟢 วาด Dashboard (ของเดิม)
+  function renderDashboard(data) {
+    let tGroups = 0, tPeople = 0, timeD = {}, genD = {}, vehD = {};
+    data.forEach(item => {
+      tGroups++; let p = item.peopleCount || 1; tPeople += p;
+      let tKey = roundTo30Min(item.time); timeD[tKey] = (timeD[tKey]||0) + p;
+      let g = item.gender || "ไม่ระบุ"; genD[g] = (genD[g]||0) + p;
+      let v = item.vehicle || "ไม่มีรถ"; vehD[v] = (vehD[v]||0) + 1;
+    });
     
-    let stationName = row["_station"] || "";
-    if (stationName.startsWith("Scanner_")) {
-      stationName = "จุดที่ " + stationName.replace("Scanner_", "");
+    document.getElementById('sumGroups').innerText = tGroups.toLocaleString();
+    document.getElementById('sumPeople').innerHTML = tPeople.toLocaleString() + ' <span class="text-xl text-slate-400 font-normal">คน</span>';
+
+    renderChart('timeChart', 'bar', Object.keys(timeD).sort(), Object.keys(timeD).sort().map(k=>timeD[k]), colors.blue);
+    renderPie('genderChart', Object.keys(genD), Object.values(genD));
+    renderPie('vehicleChart', Object.keys(vehD), Object.values(vehD));
+  }
+
+  // 🟢 วาดการ์ดเด็กหาย
+  function renderLostChildren(data) {
+    const grid = document.getElementById('lostChildGrid');
+    const badge = document.getElementById('lostCountBadge');
+    grid.innerHTML = "";
+    
+    // กรองหาเด็กที่กำลังตามหาอยู่
+    let missingCount = data.filter(c => c.status.includes('กำลังตามหา') || c.status.includes('พลัดหลง')).length;
+    
+    if (missingCount > 0) {
+      badge.innerText = missingCount;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
     }
 
-    totalPeopleCount += peopleNum;
-    if (isScanned) {
-      checkedInPeopleCount += peopleNum;
-      // เก็บชื่อคนล่าสุดที่เช็กอิน
-      if (!latestCheckedInName) {
-        latestCheckedInName = name + " " + surname;
-      }
+    if (data.length === 0) {
+      grid.innerHTML = '<div class="col-span-full text-center text-green-400 text-xl py-10 font-bold">🎉 ข่าวดี! ขณะนี้ไม่มีรายงานเด็กพลัดหลง</div>';
+      return;
     }
 
-    if (vehicle !== "") {
-      if (!vehicleStats[vehicle]) vehicleStats[vehicle] = 0;
-      vehicleStats[vehicle]++;
-    }
-
-    if (index < 5) {
-      let statusBadge = "";
-      if (isScanned) {
-        let stationLabel = stationName ? ` (${stationName})` : "";
-        statusBadge = `<span style="background: rgba(22, 101, 52, 0.8); color: #4ade80; padding: 4px 8px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; border: 1px solid rgba(74, 222, 128, 0.3);">Check-In${stationLabel}</span>`;
-      } else {
-        statusBadge = `<span style="background: rgba(51, 65, 85, 0.8); color: #94a3b8; padding: 4px 8px; border-radius: 8px; font-size: 0.85rem;">รอดำเนินการ</span>`;
-      }
-        
-      guestHtml += `
-        <tr>
-          <td style="font-family: monospace; color: #38bdf8;">${maskUID(uid)}</td>
-          <td><b>${maskName(name)}</b> ${maskName(surname)}</td>
-          <td style="text-align: center;">${peopleNum} ท่าน</td>
-          <td style="text-align: center;">${statusBadge}</td>
-        </tr>
+    data.reverse().forEach(child => {
+      let isFound = child.status.includes('เจอ') || child.status.includes('พบ');
+      let bClass = isFound ? 'status-found' : 'status-missing';
+      let cardStyle = isFound ? 'background: #0f172a; border-color: #22c55e;' : '';
+      let imgTag = child.imgUrl ? `<img src="${child.imgUrl}" alt="รูปน้อง" onerror="this.style.display='none'">` : '';
+      
+      grid.innerHTML += `
+        <div class="lost-card" style="${cardStyle}">
+          ${imgTag}
+          <div class="info">
+            <span class="status-badge ${bClass}">${child.status || 'รออัปเดต'}</span>
+            <h3 class="text-xl font-bold text-white mb-1">น้อง ${child.name || '-'}</h3>
+            <p class="text-sky-300 text-sm mb-3">อายุประมาณ: ${child.age || '-'} ปี</p>
+            <div class="text-slate-300 text-sm space-y-1">
+              <p>📍 <b>พบที่:</b> ${child.location || '-'}</p>
+              <p>👕 <b>ตำหนิ/ชุด:</b> ${child.details || '-'}</p>
+              <p>⏱️ <b>เวลา:</b> ${child.time || '-'}</p>
+            </div>
+          </div>
+        </div>
       `;
-    }
-  });
-
-  // 🎈 ตรวจสอบว่าถ้ามีจำนวนคนเช็กอินเพิ่มขึ้น ให้เด้ง Popup การ์ตูนเด็กยิ้มต้อนรับ
-  if (lastCheckedInCount !== -1 && checkedInPeopleCount > lastCheckedInCount) {
-    showDashboardPopup(latestCheckedInName);
-  }
-  lastCheckedInCount = checkedInPeopleCount;
-
-  document.getElementById("val-total-reg").innerText = totalPeopleCount.toLocaleString();
-  document.getElementById("val-checked-in").innerText = checkedInPeopleCount.toLocaleString();
-
-  let vehicleHtml = "";
-  let sortedVehicles = Object.entries(vehicleStats).sort((a, b) => b[1] - a[1]); 
-  if (sortedVehicles.length === 0) {
-    vehicleHtml = `<tr><td colspan="2" style="text-align:center;">- ไม่มีข้อมูลยานพาหนะ -</td></tr>`;
-  } else {
-    sortedVehicles.forEach(([vType, count]) => {
-      vehicleHtml += `<tr><td>${vType}</td><td style="text-align: right; font-weight: bold; color: #38bdf8;">${count.toLocaleString()} คัน</td></tr>`;
     });
   }
-  document.getElementById("vehicle-table").querySelector("tbody").innerHTML = vehicleHtml;
-  document.getElementById("guest-table").querySelector("tbody").innerHTML = guestHtml;
 
-  renderDoughnutChart(checkedInPeopleCount, totalPeopleCount);
-}
-
-// 👉 ฟังก์ชันแสดง Popup การ์ตูนเด็กยิ้มบน Dashboard
-function showDashboardPopup(guestName) {
-  const popup = document.getElementById("dashboard-popup");
-  const nameEl = document.getElementById("dash-popup-name");
-  nameEl.innerText = `คุณ ${maskName(guestName)} เช็กอินเข้างานแล้ว!`;
-  
-  popup.style.display = "flex";
-
-  // ซ่อนอัตโนมัติใน 3.5 วินาที
-  setTimeout(() => {
-    popup.style.display = "none";
-  }, 3500);
-}
-
-function renderDoughnutChart(checkedIn, totalReg) {
-  const ctx = document.getElementById('stationChart').getContext('2d');
-  const notCheckedIn = Math.max(0, totalReg - checkedIn);
-
-  if (myChart) {
-    myChart.data.datasets[0].data = [checkedIn, notCheckedIn];
-    myChart.update();
-    return;
+  function renderChart(id, type, labels, data, color) {
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+      type, data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
   }
 
-  myChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Check-In', 'ยังไม่เช็กอิน'],
-      datasets: [{
-        data: [checkedIn, notCheckedIn],
-        backgroundColor: [
-          '#4ade80', 
-          '#1e293b'  
-        ],
-        borderWidth: 3,
-        borderColor: '#0f172a',
-        borderRadius: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        animateScale: true,
-        animateRotate: true,
-        duration: 1500,
-        easing: 'easeOutQuart'
-      },
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            color: '#f8fafc',
-            font: { size: 14, weight: 'bold' },
-            padding: 15
-          }
-        }
-      },
-      cutout: '70%'
-    }
-  });
-}
-</script>
+  function renderPie(id, labels, data) {
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+      type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: Object.values(colors).slice(0, labels.length), borderWidth:0 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins:{legend:{position:'right', labels:{boxWidth:12, color:'#f8fafc'}}} }
+    });
+  }
 
+  window.onload = fetchAllData;
+  setInterval(fetchAllData, 30000); // รีเฟรชทุก 30 วินาที
+</script>
 </body>
 </html>
