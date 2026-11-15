@@ -158,17 +158,16 @@
   <div id="login-section" class="card flex-1">
     <div class="flex flex-col items-center justify-center text-center py-12 h-full">
       <div class="text-5xl mb-4">🔐</div>
-      <h2 class="text-2xl md:text-3xl font-bold text-sky-400 mb-2">ยืนยันสิทธิ์ผู้ดูแลระบบ</h2>
-      <p class="text-slate-400 mb-6 max-w-md">กรุณากรอกรหัสผ่านหลัก (Master Passphrase) เพื่อถอดรหัสข้อมูลผู้เข้าร่วมงานและเปิดใช้งานแดชบอร์ด</p>
-      <div class="w-full max-w-md space-y-4">
-        <input type="password" id="passphrase" placeholder="MASTER PASSPHRASE" 
+      <h2 class="text-2xl md:text-3xl font-bold text-sky-400 mb-6">ยืนยันสิทธิ์ผู้ดูแลระบบ</h2>
+      <form onsubmit="event.preventDefault(); loginAndLoad();" class="w-full max-w-md space-y-4">
+        <input type="password" id="passphrase" placeholder="MASTER PASSPHRASE" autofocus
           class="w-full px-4 py-3.5 rounded-xl border-2 border-sky-500 bg-slate-950 text-white text-center text-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
-          onkeydown="if(event.key==='Enter') loginAndLoad()">
-        <button onclick="loginAndLoad()" 
+          onkeydown="if(event.key==='Enter'||event.keyCode===13){event.preventDefault(); loginAndLoad();}">
+        <button type="submit"
           class="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-lg shadow-lg shadow-sky-500/20 transition cursor-pointer">
           เข้าสู่ระบบ Dashboard
         </button>
-      </div>
+      </form>
       <div id="login-status" class="mt-4 text-red-400 font-bold text-base min-h-[24px]"></div>
     </div>
   </div>
