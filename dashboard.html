@@ -123,7 +123,8 @@
     </div>
     <div id="header-status" style="display:none;">
       <div class="refresh-badge">
-        <span>🔄 อัปเดตทุก 1 นาที | ล่าสุด: <span id="last-update-time" style="font-weight: bold;">-</span></span>
+        <span>🟢 Live อัตโนมัติ | ล่าสุด: <span id="last-update-time" style="font-weight: bold;">-</span></span>
+        <button onclick="forceRefresh()" style="background: #0284c7; color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; cursor: pointer; margin-left: 6px;">⚡ รีเฟรช</button>
       </div>
     </div>
   </div>
@@ -247,20 +248,25 @@ function maskUID(str) {
   return str.substring(0, 4) + "****" + str.substring(str.length - 4);
 }
 
+let savedPassphrase = "";
+
 async function loadData() {
-  const pwd = document.getElementById("passphrase").value;
+  const pwdInput = document.getElementById("passphrase");
+  const pwd = savedPassphrase || (pwdInput ? pwdInput.value.trim() : "");
   const statEl = document.getElementById("status");
-  if (!pwd) return statEl.innerText = "กรุณากรอกรหัสผ่าน";
+  if (!pwd) return statEl ? statEl.innerText = "กรุณากรอกรหัสผ่าน" : null;
   
-  if (!autoRefreshInterval) statEl.innerText = "กำลังดาวน์โหลดและถอดรหัสข้อมูล...";
+  if (!autoRefreshInterval && statEl) statEl.innerText = "กำลังดาวน์โหลดและถอดรหัสข้อมูล...";
   
   try {
     const res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("โหลดไฟล์ไม่สำเร็จ");
     const payload = await res.json();
     let rawData = await decryptPayload(payload, pwd);
     
     if (rawData && !Array.isArray(rawData)) rawData = rawData.data || rawData.rows || rawData.records;
     
+    savedPassphrase = pwd;
     processDashboard(rawData);
     
     document.getElementById("login-section").style.display = "none";
@@ -270,14 +276,20 @@ async function loadData() {
     document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString('th-TH');
 
     if (!autoRefreshInterval) {
-      autoRefreshInterval = setInterval(loadData, 60000);
+      autoRefreshInterval = setInterval(loadData, 20000); // 🟢 ตรวจสอบข้อมูลใหม่ทุก 20 วินาที
     }
     
   } catch(e) {
-    if (!autoRefreshInterval) {
+    if (!autoRefreshInterval && statEl) {
       statEl.innerText = "❌ รหัสผ่านไม่ถูกต้อง หรือไฟล์ข้อมูลผิดพลาด";
     }
   }
+}
+
+async function forceRefresh() {
+  const timeEl = document.getElementById("last-update-time");
+  if (timeEl) timeEl.innerText = "กำลังดึงข้อมูล...";
+  await loadData();
 }
 
 function processDashboard(data) {
