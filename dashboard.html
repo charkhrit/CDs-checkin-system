@@ -851,9 +851,14 @@
       const isFound = isLostChildFound(st);
       const bClass = isFound ? 'status-found' : 'status-missing';
       const cardClass = isFound ? 'lost-mini-card found' : 'lost-mini-card';
-      const imgTag = child.imgUrl
-        ? `<img src="${escapeHtml(child.imgUrl)}" alt="รูปน้อง" onerror="this.style.display='none'">`
-        : '';
+      const rawUrl = String(child.imgUrl || "").trim();
+      const driveMatch = rawUrl.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{15,})/);
+      const resolvedUrl = driveMatch ? `https://lh3.googleusercontent.com/d/${driveMatch[1]}=w400` : rawUrl;
+      const avatarEmoji = (String(child.name || "").includes("หญิง") || String(child.details || "").includes("กระโปรง")) ? "👧" : "👦";
+      const avatarHtml = `<div class="w-[72px] h-[72px] rounded-lg bg-slate-800 border border-white/20 flex items-center justify-center text-4xl shrink-0">${avatarEmoji}</div>`;
+      const imgTag = resolvedUrl
+        ? `<img src="${escapeHtml(resolvedUrl)}" alt="รูปน้อง" onerror="this.outerHTML='<div class=\\'w-[72px] h-[72px] rounded-lg bg-slate-800 border border-white/20 flex items-center justify-center text-4xl shrink-0\\'>${avatarEmoji}</div>'">`
+        : avatarHtml;
 
       html += `
         <div class="${cardClass}">
