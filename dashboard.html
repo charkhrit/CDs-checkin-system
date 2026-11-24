@@ -206,12 +206,8 @@
           <textarea id="add-lost-details" rows="2" placeholder="เช่น เสื้อยืดสีฟ้า กางเกงขาสั้นสีดำ" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none"></textarea>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">อัปโหลดรูปภาพจากเครื่อง/มือถือ (ถ้ามี)</label>
+          <label class="block text-xs font-bold text-slate-300 mb-1">อัปโหลดรูปภาพ (ถ้ามี)</label>
           <input type="file" id="add-lost-file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">หรือวาง URL รูปภาพ</label>
-          <input type="url" id="add-lost-img" placeholder="https://..." class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none">
         </div>
         <div id="add-lost-status-msg" class="text-xs font-bold min-h-[18px]"></div>
         <div class="flex gap-2 pt-2">
@@ -1055,7 +1051,6 @@
     document.getElementById("add-lost-age").value = "";
     document.getElementById("add-lost-location").value = "";
     document.getElementById("add-lost-details").value = "";
-    document.getElementById("add-lost-img").value = "";
     document.getElementById("add-lost-file").value = "";
     document.getElementById("add-lost-status-msg").innerText = "";
     const modal = document.getElementById("add-lost-modal");
@@ -1100,7 +1095,7 @@
     const age = document.getElementById("add-lost-age").value.trim();
     const location = document.getElementById("add-lost-location").value.trim();
     const details = document.getElementById("add-lost-details").value.trim();
-    const imgUrl = document.getElementById("add-lost-img").value.trim();
+    const imgUrl = "";
     const fileInput = document.getElementById("add-lost-file");
     const statusMsg = document.getElementById("add-lost-status-msg");
     const submitBtn = document.getElementById("add-lost-submit-btn");
