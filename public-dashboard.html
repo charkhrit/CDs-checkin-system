@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>ศูนย์ข้อมูลเด็กพลัดหลง (Public View) - กองบิน 46 พิษณุโลก</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-space: #030712;
+      --card-bg: rgba(15, 23, 42, 0.92);
+      --border-glow: rgba(56, 189, 248, 0.35);
+      --text-main: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: var(--bg-space);
+      color: var(--text-main);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
+    .dashboard-container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: radial-gradient(circle at top, #1e293b 0%, #030712 100%);
+      min-height: 100vh;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    @media (min-width: 640px) {
+      .dashboard-container {
+        padding: 20px;
+        gap: 16px;
+      }
+    }
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border-radius: 14px;
+      padding: 14px;
+      border: 1px solid rgba(56, 189, 248, 0.22);
+    }
+    @media (min-width: 640px) {
+      .card { padding: 18px; }
+    }
+
+    /* ตัววิ่งประกาศเด็กพลัดหลง */
+    .ticker-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-radius: 14px;
+      padding: 12px 14px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    @media (min-width: 640px) {
+      .ticker-bar {
+        flex-direction: row;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 18px;
+      }
+    }
+    .ticker-bar.alert-active {
+      background: linear-gradient(90deg, rgba(153, 27, 27, 0.96), rgba(69, 10, 10, 0.96));
+      border: 2px solid #f87171;
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.4);
+    }
+    .ticker-bar.alert-normal {
+      background: rgba(6, 78, 59, 0.45);
+      border: 1px solid rgba(52, 211, 153, 0.4);
+    }
+    .ticker-bar.alert-warn {
+      background: rgba(120, 53, 15, 0.45);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+    }
+    .ticker-wrap {
+      overflow: hidden;
+      position: relative;
+      width: 100%;
+      flex: 1;
+      mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+      -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+    }
+    .ticker-track {
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+      will-change: transform;
+      animation: tickerScroll 55s linear infinite;
+    }
+    .ticker-wrap:hover .ticker-track { animation-play-state: paused; }
+    @keyframes tickerScroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* การ์ดเด็กพลัดหลง (Mobile-First อ่านง่าย ไม่มีข้อความทับซ้อน) */
+    .lost-card {
+      background: rgba(69, 10, 10, 0.85);
+      border: 1.5px solid #ef4444;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.18);
+    }
+    @media (min-width: 480px) {
+      .lost-card {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+    }
+    .lost-card.found {
+      background: rgba(15, 23, 42, 0.88);
+      border-color: #22c55e;
+      box-shadow: none;
+    }
+    .lost-card img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      flex-shrink: 0;
+    }
+    @media (min-width: 480px) {
+      .lost-card img {
+        width: 96px;
+        height: 96px;
+      }
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .status-missing {
+      background: #ef4444;
+      color: white;
+      animation: pulseRed 2s infinite;
+    }
+    .status-found {
+      background: #22c55e;
+      color: white;
+    }
+    @keyframes pulseRed {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+
+  <!-- Header -->
+  <header class="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <img src="LOGO.png" alt="Logo" class="w-11 h-11 rounded-full border border-sky-400/50 object-cover shrink-0" onerror="this.style.display='none'">
+      <div class="min-w-0">
+        <h1 class="text-base sm:text-xl font-extrabold text-sky-300 leading-snug">ศูนย์ข้อมูลเด็กพลัดหลง (Public View)</h1>
+        <p class="text-xs sm:text-sm text-slate-400 leading-snug">กองบิน 46 พิษณุโลก • ดูข้อมูลได้อย่างเดียว ไม่ต้องเข้าสู่ระบบ</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+      <span class="px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+        🕒 อัปเดต: <strong id="last-update-time" class="text-sky-300">-</strong>
+      </span>
+      <button type="button" onclick="fetchLostChildren()" class="px-3 py-1.5 rounded-full bg-sky-600 hover:bg-sky-500 text-white font-bold transition cursor-pointer">
+        🔄 รีเฟรช
+      </button>
+    </div>
+  </header>
+
+  <!-- แถบตัววิ่งประกาศเด็กพลัดหลง -->
+  <div id="lost-ticker-bar" class="ticker-bar alert-normal">
+    <div id="lost-ticker-badge" class="self-start sm:self-auto shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-extrabold bg-emerald-600 text-white shadow">
+      ✅ ศูนย์เด็กพลัดหลง
+    </div>
+    <div class="ticker-wrap">
+      <div id="lost-ticker-track" class="ticker-track text-sm sm:text-lg font-bold text-emerald-200">
+        <span>กำลังตรวจสอบข้อมูลศูนย์เด็กพลัดหลง...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- สรุปจำนวนเคส -->
+  <div class="grid grid-cols-2 gap-3 sm:gap-4">
+    <div class="card border-l-4 border-l-red-400">
+      <div class="text-xs sm:text-sm font-bold text-red-300">กำลังตามหา / รอผู้ปกครอง</div>
+      <div class="text-2xl sm:text-4xl font-black text-red-400 mt-1" id="countMissing">0 <span class="text-sm font-normal text-slate-400">คน</span></div>
+    </div>
+    <div class="card border-l-4 border-l-emerald-400">
+      <div class="text-xs sm:text-sm font-bold text-emerald-300">เจอผู้ปกครองแล้ว</div>
+      <div class="text-2xl sm:text-4xl font-black text-emerald-400 mt-1" id="countFound">0 <span class="text-sm font-normal text-slate-400">คน</span></div>
+    </div>
+  </div>
+
+  <!-- รายการเด็กพลัดหลงทั้งหมด (อ่านง่ายบนมือถือ) -->
+  <section class="card space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-base sm:text-lg font-extrabold text-white">📢 รายการประกาศเด็กพลัดหลง</h2>
+      <span class="text-xs sm:text-sm text-amber-300 font-semibold">⛺ ติดต่อ: เต็นท์กองอำนวยการ</span>
+    </div>
+    <div id="lostChildGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+      <div class="text-center text-slate-400 text-sm py-8 col-span-full">กำลังโหลดข้อมูล...</div>
+    </div>
+  </section>
+
+  <!-- หมายเหตุเรื่องข้อมูลเช็กอิน -->
+  <footer class="text-center text-xs text-slate-500 py-2 px-3">
+    หน้านี้แสดงผลแบบอ่านอย่างเดียว (ไม่ต้องใส่รหัสผ่าน) • ข้อมูลผู้เข้าร่วมงานในระบบเช็กอินถูกเข้ารหัส AES-256 เพื่อความปลอดภัยส่วนบุคคล
+  </footer>
+
+</div>
+
+<script>
+  const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyJcwco5WJheq2zR7Y9FUIl0HvnG3mz6Cv7UcUmB6v07z3tHlr6wfEjbMT-qiHR7nrw8A/exec";
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function isLostChildFound(status) {
+    const st = String(status || "").trim();
+    if (!st) return false;
+    if (st.includes('ยังไม่') || st.includes('ไม่พบ') || st.includes('ไม่เจอ') || st.includes('รอผู้ปกครอง')) {
+      return false;
+    }
+    return st.includes('เจอ') || st.includes('พบ') || st.includes('รับกลับ') || st.includes('รับตัว') || st.includes('ส่งคืน') || st.includes('เรียบร้อย');
+  }
+
+  function updateLostTicker(mode, htmlContent) {
+    const bar = document.getElementById("lost-ticker-bar");
+    const track = document.getElementById("lost-ticker-track");
+    const badge = document.getElementById("lost-ticker-badge");
+
+    bar.classList.remove("alert-active", "alert-normal", "alert-warn");
+    if (mode === "active") {
+      bar.classList.add("alert-active");
+      badge.className = "self-start sm:self-auto shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-extrabold bg-red-600 text-white shadow animate-pulse";
+      track.className = "ticker-track text-sm sm:text-lg font-bold text-white";
+    } else if (mode === "warn") {
+      bar.classList.add("alert-warn");
+      badge.className = "self-start sm:self-auto shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-extrabold bg-amber-600 text-white shadow";
+      track.className = "ticker-track text-sm sm:text-lg font-bold text-amber-200";
+    } else {
+      bar.classList.add("alert-normal");
+      badge.className = "self-start sm:self-auto shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-extrabold bg-emerald-600 text-white shadow";
+      track.className = "ticker-track text-sm sm:text-lg font-bold text-emerald-200";
+    }
+
+    track.innerHTML = htmlContent + htmlContent;
+  }
+
+  async function fetchLostChildren() {
+    const grid = document.getElementById("lostChildGrid");
+    const tickerBadge = document.getElementById("lost-ticker-badge");
+
+    try {
+      const res = await fetch(`${GAS_WEBAPP_URL}?action=getLostChild&t=${Date.now()}`, { redirect: 'follow' });
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error("รออัปเดตฟังก์ชัน jsonOut ใน Google Apps Script");
+      }
+      if (json.error) throw new Error(String(json.error));
+
+      const data = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+      document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString('th-TH');
+
+      const activeMissing = data.filter(c => !isLostChildFound(c.status));
+      const foundList = data.filter(c => isLostChildFound(c.status));
+
+      document.getElementById("countMissing").innerHTML = `${activeMissing.length} <span class="text-sm font-normal text-slate-400">คน</span>`;
+      document.getElementById("countFound").innerHTML = `${foundList.length} <span class="text-sm font-normal text-slate-400">คน</span>`;
+
+      if (activeMissing.length > 0) {
+        tickerBadge.innerText = `🆘 ประกาศเด็กพลัดหลง (${activeMissing.length})`;
+        const tickerItems = activeMissing.map(c => {
+          const stLabel = String(c.status || "").trim() || "ยังไม่พบผู้ปกครอง";
+          return `<span class="mx-8">🚨 <span class="bg-yellow-400 text-red-950 px-2 py-0.5 rounded font-black mr-2">${escapeHtml(stLabel)}</span> <b class="text-yellow-300">น้อง ${escapeHtml(c.name || '-')}</b> (อายุ ${escapeHtml(c.age || '-')} ปี) | 📍 พบที่: ${escapeHtml(c.location || '-')} | 👕 ชุด/ตำหนิ: ${escapeHtml(c.details || '-')} | ⏱️ เวลา: ${escapeHtml(c.time || '-')}</span>`;
+        }).join(`<span class="text-red-300"> ••• </span>`);
+        updateLostTicker("active", tickerItems);
+      } else {
+        tickerBadge.innerText = "✅ ศูนย์เด็กพลัดหลง";
+        updateLostTicker("normal", `<span class="mx-8">🎉 ข่าวดี! ขณะนี้ไม่มีรายงานเด็กพลัดหลง — หากพบเห็นเด็กพลัดหลง <b class="text-amber-300">กรุณาติดต่อที่ เต็นท์กองอำนวยการ</b></span>`);
+      }
+
+      if (data.length === 0) {
+        grid.innerHTML = '<div class="text-center text-green-400 text-sm py-8 font-bold bg-emerald-950/20 border border-emerald-700/30 rounded-lg col-span-full">🎉 ข่าวดี! ขณะนี้ไม่มีรายงานเด็กพลัดหลง</div>';
+        return;
+      }
+
+      const sorted = [...data].reverse().sort((a, b) => Number(isLostChildFound(a.status)) - Number(isLostChildFound(b.status)));
+      grid.innerHTML = sorted.map(child => {
+        const st = String(child.status || "").trim();
+        const isFound = isLostChildFound(st);
+        const bClass = isFound ? 'status-found' : 'status-missing';
+        const cardClass = isFound ? 'lost-card found' : 'lost-card';
+        const imgTag = child.imgUrl ? `<img src="${escapeHtml(child.imgUrl)}" alt="รูปน้อง" onerror="this.style.display='none'">` : '';
+
+        return `
+          <div class="${cardClass}">
+            ${imgTag}
+            <div class="flex-1 min-w-0 space-y-1.5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="text-base sm:text-lg font-bold text-white break-words">น้อง ${escapeHtml(child.name || '-')} (${escapeHtml(child.age || '-')} ปี)</h3>
+                <span class="status-badge ${bClass}">${escapeHtml(st || 'รออัปเดต')}</span>
+              </div>
+              <div class="text-slate-200 text-sm space-y-1 break-words leading-relaxed">
+                <p>📍 <b>จุดที่พบ:</b> ${escapeHtml(child.location || '-')}</p>
+                <p>👕 <b>ชุด/ตำหนิ:</b> ${escapeHtml(child.details || '-')}</p>
+                <p>⏱️ <b>เวลา:</b> ${escapeHtml(child.time || '-')}</p>
+                ${child.foundNote || child.guardianName ? `<p class="text-emerald-300 font-semibold pt-1">📝 ${escapeHtml(child.guardianName ? 'ผู้ปกครอง: ' + child.guardianName + ' ' : '')}${escapeHtml(child.foundNote || '')}</p>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    } catch (err) {
+      tickerBadge.innerText = "⚠️ ศูนย์เด็กพลัดหลง";
+      updateLostTicker("warn", `<span class="mx-8">⚠️ กำลังรอเชื่อมต่อข้อมูล (${escapeHtml(err.message)})</span>`);
+      grid.innerHTML = `<div class="text-center text-amber-300 text-sm py-6 bg-amber-950/30 border border-amber-700/40 rounded-lg px-3 col-span-full">⚠️ รอเชื่อมต่อ API เด็กพลัดหลง: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  fetchLostChildren();
+  setInterval(fetchLostChildren, 20000);
+</script>
+</body>
+</html>
