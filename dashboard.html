@@ -179,6 +179,45 @@
     </div>
   </div>
 
+  <!-- ➕ Modal แจ้งเด็กพลัดหลงใหม่ (เฉพาะแอดมินที่ล็อกอิน) -->
+  <div id="add-lost-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border-2 border-red-500/60 p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-extrabold text-red-400">🆘 แจ้งเด็กพลัดหลงใหม่</h3>
+        <button type="button" onclick="closeAddLostModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+      </div>
+      <form onsubmit="event.preventDefault(); submitAddLostChild();" class="space-y-3">
+        <div class="grid grid-cols-3 gap-2">
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-slate-300 mb-1">ชื่อเล่น / ชื่อจริงเด็ก *</label>
+            <input type="text" id="add-lost-name" required placeholder="เช่น น้องต้นกล้า" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">อายุ (ปี)</label>
+            <input type="text" id="add-lost-age" placeholder="เช่น 5" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">จุดที่พบ / เจ้าหน้าที่ดูแล *</label>
+          <input type="text" id="add-lost-location" required placeholder="เช่น หน้าเวทีกลาง / เต็นท์กองอำนวยการ" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">ตำหนิ / การแต่งกาย</label>
+          <textarea id="add-lost-details" rows="2" placeholder="เช่น เสื้อยืดสีฟ้า กางเกงขาสั้นสีดำ" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">URL รูปภาพ (ถ้ามี)</label>
+          <input type="url" id="add-lost-img" placeholder="https://..." class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none">
+        </div>
+        <div id="add-lost-status-msg" class="text-xs font-bold min-h-[18px]"></div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeAddLostModal()" class="flex-1 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition">ยกเลิก</button>
+          <button type="submit" id="add-lost-submit-btn" class="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition">บันทึกประกาศ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 <div class="dashboard-container">
   
   <!-- Header -->
@@ -312,6 +351,9 @@
               <span id="lostCountBadge" class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
             </h2>
             <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" onclick="openAddLostModal()" class="px-2.5 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow transition cursor-pointer">
+                ➕ แจ้งเด็กพลัดหลงใหม่
+              </button>
               <div id="lost-flip-controls" class="hidden">
                 <div class="flex items-center gap-1 bg-slate-900/90 border border-slate-700 px-2 py-0.5 rounded-full text-xs">
                   <button onclick="stepLostPage(-1)" title="หน้าก่อนหน้า" class="px-1.5 py-0.5 text-slate-300 hover:text-white cursor-pointer">◀</button>
@@ -971,6 +1013,74 @@
       statusMsg.innerText = "✅ อัปเดตสถานะเป็น เจอผู้ปกครองแล้ว สำเร็จ!";
       setTimeout(() => {
         closeCaseModal();
+        fetchLostChildren();
+      }, 900);
+    } catch (err) {
+      statusMsg.className = "text-xs font-bold text-red-400 min-h-[18px]";
+      statusMsg.innerText = "❌ ไม่สามารถบันทึกได้: " + err.message;
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  function openAddLostModal() {
+    document.getElementById("add-lost-name").value = "";
+    document.getElementById("add-lost-age").value = "";
+    document.getElementById("add-lost-location").value = "";
+    document.getElementById("add-lost-details").value = "";
+    document.getElementById("add-lost-img").value = "";
+    document.getElementById("add-lost-status-msg").innerText = "";
+    const modal = document.getElementById("add-lost-modal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+
+  function closeAddLostModal() {
+    const modal = document.getElementById("add-lost-modal");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  async function submitAddLostChild() {
+    const name = document.getElementById("add-lost-name").value.trim();
+    const age = document.getElementById("add-lost-age").value.trim();
+    const location = document.getElementById("add-lost-location").value.trim();
+    const details = document.getElementById("add-lost-details").value.trim();
+    const imgUrl = document.getElementById("add-lost-img").value.trim();
+    const statusMsg = document.getElementById("add-lost-status-msg");
+    const submitBtn = document.getElementById("add-lost-submit-btn");
+
+    if (!name || !location) return;
+
+    submitBtn.disabled = true;
+    statusMsg.className = "text-xs font-bold text-sky-400 min-h-[18px]";
+    statusMsg.innerText = "กำลังบันทึกข้อมูล...";
+
+    try {
+      const payload = {
+        action: "addLostChild",
+        name: name,
+        age: age,
+        location: location,
+        details: details,
+        imgUrl: imgUrl,
+        status: "ยังไม่พบผู้ปกครอง"
+      };
+      const res = await fetch(GAS_WEBAPP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        redirect: "follow"
+      });
+      const text = await res.text();
+      let json = {};
+      try { json = JSON.parse(text); } catch {}
+      if (json.error) throw new Error(json.error);
+
+      statusMsg.className = "text-xs font-bold text-emerald-400 min-h-[18px]";
+      statusMsg.innerText = "✅ บันทึกประกาศเด็กพลัดหลงสำเร็จ!";
+      setTimeout(() => {
+        closeAddLostModal();
         fetchLostChildren();
       }, 900);
     } catch (err) {
