@@ -590,7 +590,7 @@
       }
 
       totalPeopleCount += peopleNum;
-      genderStats[gender] = (genderStats[gender] || 0) + peopleNum;
+      genderStats[gender] = (genderStats[gender] || 0) + 1;
       vehicleStats[vehicle] = (vehicleStats[vehicle] || 0) + 1;
 
       const parsedTime = Date.parse(row["_scanTime"] || row["Timestamp"] || row["เวลา"] || "");
