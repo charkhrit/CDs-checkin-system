@@ -1083,7 +1083,21 @@
           const canvas = document.createElement("canvas");
           canvas.width = w;
           canvas.height = h;
-          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // 🔒 วาดแถบปิดบังใบหน้า (PDPA) ฝังลงในไฟล์รูปจริงถาวรก่อนอัปโหลดเข้า Drive
+          const maskH = Math.round(h * 0.48);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(0, 0, w, maskH);
+          ctx.fillStyle = "#fbbf24";
+          ctx.fillRect(0, maskH - 4, w, 4);
+          ctx.fillStyle = "#f8fafc";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `bold ${Math.max(18, Math.round(w * 0.08))}px sans-serif`;
+          ctx.fillText("😊 PDPA PROTECTED", w / 2, maskH / 2);
+
           const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
           resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
         };

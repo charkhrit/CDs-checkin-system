@@ -375,23 +375,8 @@
           const isFound = isLostChildFound(st);
           const bClass = isFound ? 'status-found' : 'status-missing';
           const cardClass = isFound ? 'lost-card found' : 'lost-card';
-          const rawUrl = String(child.imgUrl || "").trim();
-          const driveMatch = rawUrl.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{15,})/);
-          const resolvedUrl = driveMatch ? `https://lh3.googleusercontent.com/d/${driveMatch[1]}=w400` : rawUrl;
           const avatarEmoji = (String(child.name || "").includes("หญิง") || String(child.details || "").includes("กระโปรง")) ? "👧" : "👦";
-          const avatarHtml = `<div class="w-full sm:w-24 h-36 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex items-center justify-center text-5xl shrink-0">${avatarEmoji}</div>`;
-          const imgTag = resolvedUrl
-            ? `<div class="relative shrink-0 overflow-hidden rounded-xl w-full sm:w-24 h-44 sm:h-24 border border-white/20 bg-slate-900">
-                 <img src="${escapeHtml(resolvedUrl)}" alt="รูปการแต่งกายน้อง" class="w-full h-full object-cover object-bottom" onerror="this.parentElement.outerHTML='<div class=\\'w-full sm:w-24 h-36 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex items-center justify-center text-5xl shrink-0\\'>${avatarEmoji}</div>'">
-                 <div class="absolute inset-x-0 top-0 h-[55%] overflow-hidden pointer-events-none select-none">
-                   <img src="${escapeHtml(resolvedUrl)}" alt="" aria-hidden="true" class="w-full h-44 sm:h-24 object-cover object-bottom blur-xl scale-110" onerror="this.style.display='none'">
-                 </div>
-                 <div title="ปิดบังใบหน้าเพื่อคุ้มครองข้อมูลส่วนบุคคล (PDPA)" class="absolute inset-x-0 top-0 h-[52%] bg-slate-950/95 backdrop-blur-2xl border-b border-amber-400/50 flex flex-col items-center justify-center pointer-events-none select-none">
-                   <span class="text-2xl sm:text-lg leading-none">😊</span>
-                   <span class="text-[10px] sm:text-[8px] font-bold text-amber-300 mt-0.5 tracking-tight">PDPA</span>
-                 </div>
-               </div>`
-            : avatarHtml;
+          const imgTag = `<div class="w-full sm:w-24 h-28 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex flex-col items-center justify-center shrink-0"><span class="text-4xl sm:text-5xl leading-none">${avatarEmoji}</span><span class="text-[10px] text-amber-300 font-bold mt-1">PDPA</span></div>`;
           return `
             <div class="${cardClass}">
               ${imgTag}
@@ -404,7 +389,6 @@
                   <p>📍 <b>จุดที่พบ:</b> ${escapeHtml(child.location || '-')}</p>
                   <p>👕 <b>ชุด/ตำหนิ:</b> ${escapeHtml(child.details || '-')}</p>
                   <p>⏱️ <b>เวลา:</b> ${escapeHtml(child.time || '-')}</p>
-                  ${child.foundNote || child.guardianName ? `<p class="text-emerald-300 font-semibold pt-1">📝 ${escapeHtml(child.guardianName ? 'ผู้ปกครอง: ' + child.guardianName + ' ' : '')}${escapeHtml(child.foundNote || '')}</p>` : ''}
                 </div>
               </div>
             </div>
@@ -481,7 +465,7 @@
   async function fetchLostChildren() {
     const tickerBadge = document.getElementById("lost-ticker-badge");
     try {
-      const res = await fetch(`${GAS_WEBAPP_URL}?action=getLostChild&t=${Date.now()}`, { redirect: 'follow' });
+      const res = await fetch(`${GAS_WEBAPP_URL}?action=getLostChild&mode=public&t=${Date.now()}`, { redirect: 'follow' });
       const text = await res.text();
       let json;
       try { json = JSON.parse(text); } catch { throw new Error("รออัปเดตฟังก์ชัน jsonOut ใน Google Apps Script"); }
