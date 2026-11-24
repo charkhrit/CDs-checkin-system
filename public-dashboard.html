@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>ศูนย์ข้อมูลเด็กพลัดหลง (Public View) - กองบิน 46 พิษณุโลก</title>
+  <title>ศูนย์ข้อมูลเด็กพลัดหลง - กองบิน 46 พิษณุโลก</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
       --bg-space: #030712;
       --card-bg: rgba(15, 23, 42, 0.92);
-      --border-glow: rgba(56, 189, 248, 0.35);
       --text-main: #f8fafc;
     }
     * { box-sizing: border-box; }
@@ -103,7 +102,8 @@
       100% { transform: translateX(-50%); }
     }
 
-    /* การ์ดเด็กพลัดหลง (Mobile-First อ่านง่าย ไม่มีข้อความทับซ้อน) */
+    /* เอฟเฟกต์ Flip สับไพ่ */
+    .deck-perspective { perspective: 1200px; }
     .lost-card {
       background: rgba(69, 10, 10, 0.85);
       border: 1.5px solid #ef4444;
@@ -113,6 +113,9 @@
       flex-direction: column;
       gap: 12px;
       box-shadow: 0 0 15px rgba(239, 68, 68, 0.18);
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+      transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.26s ease;
     }
     @media (min-width: 480px) {
       .lost-card {
@@ -124,6 +127,17 @@
       background: rgba(15, 23, 42, 0.88);
       border-color: #22c55e;
       box-shadow: none;
+    }
+    .deck-flip-out .lost-card {
+      transform: rotateY(90deg) scale(0.95);
+      opacity: 0.15;
+    }
+    .deck-flip-in .lost-card {
+      animation: cardFlipIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes cardFlipIn {
+      0% { transform: rotateY(-90deg) scale(0.95); opacity: 0.15; }
+      100% { transform: rotateY(0deg) scale(1); opacity: 1; }
     }
     .lost-card img {
       width: 100%;
@@ -202,7 +216,7 @@
   <!-- สรุปจำนวนเคส -->
   <div class="grid grid-cols-2 gap-3 sm:gap-4">
     <div class="card border-l-4 border-l-red-400">
-      <div class="text-xs sm:text-sm font-bold text-red-300">กำลังตามหา / รอผู้ปกครอง</div>
+      <div class="text-xs sm:text-sm font-bold text-red-300">ยังไม่เจอผู้ปกครอง</div>
       <div class="text-2xl sm:text-4xl font-black text-red-400 mt-1" id="countMissing">0 <span class="text-sm font-normal text-slate-400">คน</span></div>
     </div>
     <div class="card border-l-4 border-l-emerald-400">
@@ -211,26 +225,53 @@
     </div>
   </div>
 
-  <!-- รายการเด็กพลัดหลงทั้งหมด (อ่านง่ายบนมือถือ) -->
-  <section class="card space-y-3">
+  <!-- ส่วนที่ 1: ยังไม่เจอผู้ปกครอง (ฟลิบการ์ดอัตโนมัติ) -->
+  <section class="card border-red-500/40 space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-base sm:text-lg font-extrabold text-white">📢 รายการประกาศเด็กพลัดหลง</h2>
-      <span class="text-xs sm:text-sm text-amber-300 font-semibold">⛺ ติดต่อ: เต็นท์กองอำนวยการ</span>
+      <h2 class="text-base sm:text-lg font-extrabold text-red-300">🚨 ยังไม่เจอผู้ปกครอง</h2>
+      <div id="missing-flip-controls" class="hidden flex items-center gap-1.5 text-xs">
+        <button type="button" onclick="decks.missing.step(-1)" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold cursor-pointer">◀</button>
+        <span id="missing-page-info" class="px-2 font-bold text-slate-300">1/1</span>
+        <button type="button" onclick="decks.missing.step(1)" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold cursor-pointer">▶</button>
+        <button type="button" id="missing-flip-toggle" onclick="decks.missing.togglePause()" class="ml-1 px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white font-bold cursor-pointer">⏸️ หยุดดู</button>
+      </div>
     </div>
-    <div id="lostChildGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-      <div class="text-center text-slate-400 text-sm py-8 col-span-full">กำลังโหลดข้อมูล...</div>
+    <div class="deck-perspective">
+      <div id="missingGrid" onclick="decks.missing.togglePause()" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 cursor-pointer">
+        <div class="text-center text-slate-400 text-sm py-8 col-span-full">กำลังโหลดข้อมูล...</div>
+      </div>
     </div>
+    <p id="missing-flip-hint" class="hidden text-center text-xs text-slate-400">🃏 สลับการ์ดอัตโนมัติทุก 5 วินาที (แตะที่การ์ดเพื่อหยุดอ่าน)</p>
   </section>
 
-  <!-- หมายเหตุเรื่องข้อมูลเช็กอิน -->
+  <!-- ส่วนที่ 2: เจอผู้ปกครองแล้ว (ฟลิบการ์ดอัตโนมัติ) -->
+  <section class="card border-emerald-500/40 space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-base sm:text-lg font-extrabold text-emerald-300">✅ เจอผู้ปกครองแล้ว</h2>
+      <div id="found-flip-controls" class="hidden flex items-center gap-1.5 text-xs">
+        <button type="button" onclick="decks.found.step(-1)" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold cursor-pointer">◀</button>
+        <span id="found-page-info" class="px-2 font-bold text-slate-300">1/1</span>
+        <button type="button" onclick="decks.found.step(1)" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold cursor-pointer">▶</button>
+        <button type="button" id="found-flip-toggle" onclick="decks.found.togglePause()" class="ml-1 px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white font-bold cursor-pointer">⏸️ หยุดดู</button>
+      </div>
+    </div>
+    <div class="deck-perspective">
+      <div id="foundGrid" onclick="decks.found.togglePause()" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 cursor-pointer">
+        <div class="text-center text-slate-400 text-sm py-8 col-span-full">กำลังโหลดข้อมูล...</div>
+      </div>
+    </div>
+    <p id="found-flip-hint" class="hidden text-center text-xs text-slate-400">🃏 สลับการ์ดอัตโนมัติทุก 5 วินาที (แตะที่การ์ดเพื่อหยุดอ่าน)</p>
+  </section>
+
   <footer class="text-center text-xs text-slate-500 py-2 px-3">
-    หน้านี้แสดงผลแบบอ่านอย่างเดียว (ไม่ต้องใส่รหัสผ่าน) • ข้อมูลผู้เข้าร่วมงานในระบบเช็กอินถูกเข้ารหัส AES-256 เพื่อความปลอดภัยส่วนบุคคล
+    ⛺ ติดต่อสอบถามหรือแจ้งเบาะแสได้ที่ เต็นท์กองอำนวยการ
   </footer>
 
 </div>
 
 <script>
   const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyJcwco5WJheq2zR7Y9FUIl0HvnG3mz6Cv7UcUmB6v07z3tHlr6wfEjbMT-qiHR7nrw8A/exec";
+  const PAGE_SIZE = 2;
 
   function escapeHtml(str) {
     return String(str ?? "")
@@ -269,30 +310,142 @@
       badge.className = "self-start sm:self-auto shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-extrabold bg-emerald-600 text-white shadow";
       track.className = "ticker-track text-sm sm:text-lg font-bold text-emerald-200";
     }
-
     track.innerHTML = htmlContent + htmlContent;
   }
 
-  async function fetchLostChildren() {
-    const grid = document.getElementById("lostChildGrid");
-    const tickerBadge = document.getElementById("lost-ticker-badge");
+  function createDeck(prefix, emptyHtml) {
+    return {
+      items: [],
+      pageIndex: 0,
+      isPaused: false,
+      isFlipping: false,
+      timer: null,
+      setItems(list) {
+        this.items = list;
+        this.pageIndex = 0;
+        this.render(false);
+        this.startTimer();
+      },
+      render(animate) {
+        const grid = document.getElementById(prefix + "Grid");
+        if (!this.items.length) {
+          grid.classList.remove("deck-flip-out", "deck-flip-in");
+          grid.innerHTML = emptyHtml;
+          this.updateControls();
+          return;
+        }
+        const totalPages = Math.max(1, Math.ceil(this.items.length / PAGE_SIZE));
+        if (this.pageIndex >= totalPages) this.pageIndex = 0;
+        const start = this.pageIndex * PAGE_SIZE;
+        const pageItems = this.items.slice(start, start + PAGE_SIZE);
 
+        grid.classList.remove("deck-flip-out", "deck-flip-in");
+        grid.innerHTML = pageItems.map(child => {
+          const st = String(child.status || "").trim();
+          const isFound = isLostChildFound(st);
+          const bClass = isFound ? 'status-found' : 'status-missing';
+          const cardClass = isFound ? 'lost-card found' : 'lost-card';
+          const imgTag = child.imgUrl ? `<img src="${escapeHtml(child.imgUrl)}" alt="รูปน้อง" onerror="this.style.display='none'">` : '';
+          return `
+            <div class="${cardClass}">
+              ${imgTag}
+              <div class="flex-1 min-w-0 space-y-1.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <h3 class="text-base sm:text-lg font-bold text-white break-words">น้อง ${escapeHtml(child.name || '-')} (${escapeHtml(child.age || '-')} ปี)</h3>
+                  <span class="status-badge ${bClass}">${escapeHtml(st || 'รออัปเดต')}</span>
+                </div>
+                <div class="text-slate-200 text-sm space-y-1 break-words leading-relaxed">
+                  <p>📍 <b>จุดที่พบ:</b> ${escapeHtml(child.location || '-')}</p>
+                  <p>👕 <b>ชุด/ตำหนิ:</b> ${escapeHtml(child.details || '-')}</p>
+                  <p>⏱️ <b>เวลา:</b> ${escapeHtml(child.time || '-')}</p>
+                  ${child.foundNote || child.guardianName ? `<p class="text-emerald-300 font-semibold pt-1">📝 ${escapeHtml(child.guardianName ? 'ผู้ปกครอง: ' + child.guardianName + ' ' : '')}${escapeHtml(child.foundNote || '')}</p>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        if (animate) {
+          void grid.offsetWidth;
+          grid.classList.add("deck-flip-in");
+          setTimeout(() => {
+            grid.classList.remove("deck-flip-in");
+            this.isFlipping = false;
+          }, 360);
+        }
+        this.updateControls();
+      },
+      updateControls() {
+        const controls = document.getElementById(prefix + "-flip-controls");
+        const hint = document.getElementById(prefix + "-flip-hint");
+        const pageInfo = document.getElementById(prefix + "-page-info");
+        const toggleBtn = document.getElementById(prefix + "-flip-toggle");
+        const totalPages = Math.max(1, Math.ceil(this.items.length / PAGE_SIZE));
+
+        if (this.items.length > PAGE_SIZE) {
+          controls.classList.remove("hidden");
+          hint.classList.remove("hidden");
+          pageInfo.innerText = `${this.pageIndex + 1}/${totalPages}`;
+          if (this.isPaused) {
+            toggleBtn.innerText = "▶️ เล่นต่อ";
+            toggleBtn.className = "ml-1 px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer";
+          } else {
+            toggleBtn.innerText = "⏸️ หยุดดู";
+            toggleBtn.className = "ml-1 px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white font-bold cursor-pointer";
+          }
+        } else {
+          controls.classList.add("hidden");
+          hint.classList.add("hidden");
+        }
+      },
+      step(delta) {
+        const totalPages = Math.ceil(this.items.length / PAGE_SIZE);
+        if (totalPages <= 1 || this.isFlipping) return;
+        this.isFlipping = true;
+        const grid = document.getElementById(prefix + "Grid");
+        grid.classList.remove("deck-flip-in");
+        grid.classList.add("deck-flip-out");
+        setTimeout(() => {
+          this.pageIndex = (this.pageIndex + delta + totalPages) % totalPages;
+          this.render(true);
+        }, 260);
+        this.startTimer();
+      },
+      togglePause() {
+        if (this.items.length <= PAGE_SIZE) return;
+        this.isPaused = !this.isPaused;
+        this.updateControls();
+      },
+      startTimer() {
+        if (this.timer) clearInterval(this.timer);
+        if (this.items.length > PAGE_SIZE) {
+          this.timer = setInterval(() => {
+            if (!this.isPaused) this.step(1);
+          }, 5000);
+        }
+      }
+    };
+  }
+
+  const decks = {
+    missing: createDeck("missing", '<div class="text-center text-green-400 text-sm py-8 font-bold bg-emerald-950/20 border border-emerald-700/30 rounded-lg col-span-full">🎉 ข่าวดี! ขณะนี้ไม่มีรายงานเด็กพลัดหลง</div>'),
+    found: createDeck("found", '<div class="text-center text-slate-400 text-sm py-8 col-span-full">ยังไม่มีรายการที่เจอผู้ปกครองแล้ว</div>')
+  };
+
+  async function fetchLostChildren() {
+    const tickerBadge = document.getElementById("lost-ticker-badge");
     try {
       const res = await fetch(`${GAS_WEBAPP_URL}?action=getLostChild&t=${Date.now()}`, { redirect: 'follow' });
       const text = await res.text();
       let json;
-      try {
-        json = JSON.parse(text);
-      } catch {
-        throw new Error("รออัปเดตฟังก์ชัน jsonOut ใน Google Apps Script");
-      }
+      try { json = JSON.parse(text); } catch { throw new Error("รออัปเดตฟังก์ชัน jsonOut ใน Google Apps Script"); }
       if (json.error) throw new Error(String(json.error));
 
       const data = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
       document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString('th-TH');
 
-      const activeMissing = data.filter(c => !isLostChildFound(c.status));
-      const foundList = data.filter(c => isLostChildFound(c.status));
+      const activeMissing = [...data].reverse().filter(c => !isLostChildFound(c.status));
+      const foundList = [...data].reverse().filter(c => isLostChildFound(c.status));
 
       document.getElementById("countMissing").innerHTML = `${activeMissing.length} <span class="text-sm font-normal text-slate-400">คน</span>`;
       document.getElementById("countFound").innerHTML = `${foundList.length} <span class="text-sm font-normal text-slate-400">คน</span>`;
@@ -309,41 +462,11 @@
         updateLostTicker("normal", `<span class="mx-8">🎉 ข่าวดี! ขณะนี้ไม่มีรายงานเด็กพลัดหลง — หากพบเห็นเด็กพลัดหลง <b class="text-amber-300">กรุณาติดต่อที่ เต็นท์กองอำนวยการ</b></span>`);
       }
 
-      if (data.length === 0) {
-        grid.innerHTML = '<div class="text-center text-green-400 text-sm py-8 font-bold bg-emerald-950/20 border border-emerald-700/30 rounded-lg col-span-full">🎉 ข่าวดี! ขณะนี้ไม่มีรายงานเด็กพลัดหลง</div>';
-        return;
-      }
-
-      const sorted = [...data].reverse().sort((a, b) => Number(isLostChildFound(a.status)) - Number(isLostChildFound(b.status)));
-      grid.innerHTML = sorted.map(child => {
-        const st = String(child.status || "").trim();
-        const isFound = isLostChildFound(st);
-        const bClass = isFound ? 'status-found' : 'status-missing';
-        const cardClass = isFound ? 'lost-card found' : 'lost-card';
-        const imgTag = child.imgUrl ? `<img src="${escapeHtml(child.imgUrl)}" alt="รูปน้อง" onerror="this.style.display='none'">` : '';
-
-        return `
-          <div class="${cardClass}">
-            ${imgTag}
-            <div class="flex-1 min-w-0 space-y-1.5">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <h3 class="text-base sm:text-lg font-bold text-white break-words">น้อง ${escapeHtml(child.name || '-')} (${escapeHtml(child.age || '-')} ปี)</h3>
-                <span class="status-badge ${bClass}">${escapeHtml(st || 'รออัปเดต')}</span>
-              </div>
-              <div class="text-slate-200 text-sm space-y-1 break-words leading-relaxed">
-                <p>📍 <b>จุดที่พบ:</b> ${escapeHtml(child.location || '-')}</p>
-                <p>👕 <b>ชุด/ตำหนิ:</b> ${escapeHtml(child.details || '-')}</p>
-                <p>⏱️ <b>เวลา:</b> ${escapeHtml(child.time || '-')}</p>
-                ${child.foundNote || child.guardianName ? `<p class="text-emerald-300 font-semibold pt-1">📝 ${escapeHtml(child.guardianName ? 'ผู้ปกครอง: ' + child.guardianName + ' ' : '')}${escapeHtml(child.foundNote || '')}</p>` : ''}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
+      decks.missing.setItems(activeMissing);
+      decks.found.setItems(foundList);
     } catch (err) {
       tickerBadge.innerText = "⚠️ ศูนย์เด็กพลัดหลง";
       updateLostTicker("warn", `<span class="mx-8">⚠️ กำลังรอเชื่อมต่อข้อมูล (${escapeHtml(err.message)})</span>`);
-      grid.innerHTML = `<div class="text-center text-amber-300 text-sm py-6 bg-amber-950/30 border border-amber-700/40 rounded-lg px-3 col-span-full">⚠️ รอเชื่อมต่อ API เด็กพลัดหลง: ${escapeHtml(err.message)}</div>`;
     }
   }
 
