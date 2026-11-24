@@ -381,9 +381,12 @@
           const avatarEmoji = (String(child.name || "").includes("หญิง") || String(child.details || "").includes("กระโปรง")) ? "👧" : "👦";
           const avatarHtml = `<div class="w-full sm:w-24 h-36 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex items-center justify-center text-5xl shrink-0">${avatarEmoji}</div>`;
           const imgTag = resolvedUrl
-            ? `<div class="relative shrink-0 overflow-hidden rounded-xl w-full sm:w-24 h-44 sm:h-24 border border-white/20">
-                 <img src="${escapeHtml(resolvedUrl)}" alt="รูปการแต่งกายน้อง" class="w-full h-full object-cover" onerror="this.parentElement.outerHTML='<div class=\\'w-full sm:w-24 h-36 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex items-center justify-center text-5xl shrink-0\\'>${avatarEmoji}</div>'">
-                 <div title="ปิดบังใบหน้าเพื่อคุ้มครองข้อมูลส่วนบุคคล (PDPA)" class="absolute top-1.5 left-1/2 -translate-x-1/2 w-12 h-12 sm:w-9 sm:h-9 rounded-full bg-amber-300/90 backdrop-blur-md flex items-center justify-center text-2xl sm:text-xl shadow-lg border border-white/60 pointer-events-none">😊</div>
+            ? `<div class="relative shrink-0 overflow-hidden rounded-xl w-full sm:w-24 h-44 sm:h-24 border border-white/20 bg-slate-900">
+                 <img src="${escapeHtml(resolvedUrl)}" alt="รูปการแต่งกายน้อง" class="w-full h-full object-cover object-bottom" onerror="this.parentElement.outerHTML='<div class=\\'w-full sm:w-24 h-36 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex items-center justify-center text-5xl shrink-0\\'>${avatarEmoji}</div>'">
+                 <div title="ปิดบังใบหน้าเพื่อคุ้มครองข้อมูลส่วนบุคคล (PDPA)" class="absolute inset-x-0 top-0 h-[52%] bg-slate-950/95 backdrop-blur-2xl border-b border-amber-400/50 flex flex-col items-center justify-center pointer-events-none select-none">
+                   <span class="text-2xl sm:text-lg leading-none">😊</span>
+                   <span class="text-[10px] sm:text-[8px] font-bold text-amber-300 mt-0.5 tracking-tight">PDPA</span>
+                 </div>
                </div>`
             : avatarHtml;
           return `
