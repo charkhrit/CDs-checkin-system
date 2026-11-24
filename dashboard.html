@@ -147,6 +147,38 @@
     </div>
   </div>
 
+  <!-- ✅ Modal ปิดเคสเด็กพลัดหลง (เฉพาะแอดมินที่ล็อกอิน) -->
+  <div id="close-case-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border-2 border-emerald-500/60 p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-extrabold text-emerald-400">✅ ปิดเคส: เจอผู้ปกครองแล้ว</h3>
+        <button type="button" onclick="closeCaseModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+      </div>
+      <p class="text-sm text-slate-300 mb-4">กำลังอัปเดตสถานะของ: <span id="modal-child-name" class="font-bold text-white"></span></p>
+      <form onsubmit="event.preventDefault(); submitCloseCase();" class="space-y-3">
+        <input type="hidden" id="modal-child-id">
+        <input type="hidden" id="modal-child-name-val">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">ชื่อผู้ปกครอง / ผู้มารับตัว</label>
+          <input type="text" id="modal-guardian-name" placeholder="ระบุชื่อผู้ปกครองที่มารับ" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-emerald-400 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">เบอร์ติดต่อผู้ปกครอง</label>
+          <input type="tel" id="modal-guardian-phone" placeholder="เช่น 08x-xxx-xxxx" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-emerald-400 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">รายละเอียดเพิ่มเติมเมื่อพบ / หมายเหตุ</label>
+          <textarea id="modal-found-note" rows="2" placeholder="เช่น พบที่เต็นท์กองอำนวยการ ส่งมอบเรียบร้อย" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-emerald-400 outline-none"></textarea>
+        </div>
+        <div id="modal-status-msg" class="text-xs font-bold min-h-[18px]"></div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeCaseModal()" class="flex-1 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition">ยกเลิก</button>
+          <button type="submit" id="modal-submit-btn" class="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition">ยืนยัน: เจอผู้ปกครองแล้ว</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 <div class="dashboard-container">
   
   <!-- Header -->
@@ -774,7 +806,15 @@
               <p class="truncate">📍 <b>จุดที่พบ:</b> ${escapeHtml(child.location || '-')}</p>
               <p class="truncate">👕 <b>ชุด/ตำหนิ:</b> ${escapeHtml(child.details || '-')}</p>
               <p>⏱️ <b>เวลา:</b> ${escapeHtml(child.time || '-')} <span class="text-amber-300 font-semibold">| ติดต่อ: เต็นท์กองอำนวยการ</span></p>
+              ${child.foundNote || child.guardianName ? `<p class="text-emerald-300 font-semibold mt-1">📝 ${escapeHtml(child.guardianName ? 'ผู้ปกครอง: ' + child.guardianName + ' ' : '')}${escapeHtml(child.foundNote || '')}</p>` : ''}
             </div>
+            ${!isFound ? `
+            <div class="mt-2 pt-1.5 border-t border-red-500/30 flex justify-end">
+              <button type="button" onclick="event.stopPropagation(); openCloseCaseModal('${escapeHtml(child.id || child.rowIndex || child.name || '')}', '${escapeHtml(child.name || '')}')"
+                class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition cursor-pointer">
+                ✅ ปิดเคส / เจอผู้ปกครองแล้ว
+              </button>
+            </div>` : ''}
           </div>
         </div>
       `;
@@ -872,6 +912,73 @@
 
     renderLostPageCards(false);
     startLostFlipTimer();
+  }
+
+  function openCloseCaseModal(childId, childName) {
+    document.getElementById("modal-child-id").value = childId || "";
+    document.getElementById("modal-child-name-val").value = childName || "";
+    document.getElementById("modal-child-name").innerText = "น้อง " + (childName || "-");
+    document.getElementById("modal-guardian-name").value = "";
+    document.getElementById("modal-guardian-phone").value = "";
+    document.getElementById("modal-found-note").value = "";
+    document.getElementById("modal-status-msg").innerText = "";
+    const modal = document.getElementById("close-case-modal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+
+  function closeCaseModal() {
+    const modal = document.getElementById("close-case-modal");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  async function submitCloseCase() {
+    const id = document.getElementById("modal-child-id").value;
+    const name = document.getElementById("modal-child-name-val").value;
+    const guardianName = document.getElementById("modal-guardian-name").value.trim();
+    const guardianPhone = document.getElementById("modal-guardian-phone").value.trim();
+    const foundNote = document.getElementById("modal-found-note").value.trim();
+    const statusMsg = document.getElementById("modal-status-msg");
+    const submitBtn = document.getElementById("modal-submit-btn");
+
+    submitBtn.disabled = true;
+    statusMsg.className = "text-xs font-bold text-sky-400 min-h-[18px]";
+    statusMsg.innerText = "กำลังบันทึกข้อมูล...";
+
+    try {
+      const payload = {
+        action: "updateLostChild",
+        id: id,
+        name: name,
+        status: "เจอผู้ปกครองแล้ว",
+        guardianName: guardianName,
+        guardianPhone: guardianPhone,
+        foundNote: foundNote
+      };
+      const res = await fetch(GAS_WEBAPP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        redirect: "follow"
+      });
+      const text = await res.text();
+      let json = {};
+      try { json = JSON.parse(text); } catch {}
+      if (json.error) throw new Error(json.error);
+
+      statusMsg.className = "text-xs font-bold text-emerald-400 min-h-[18px]";
+      statusMsg.innerText = "✅ อัปเดตสถานะเป็น เจอผู้ปกครองแล้ว สำเร็จ!";
+      setTimeout(() => {
+        closeCaseModal();
+        fetchLostChildren();
+      }, 900);
+    } catch (err) {
+      statusMsg.className = "text-xs font-bold text-red-400 min-h-[18px]";
+      statusMsg.innerText = "❌ ไม่สามารถบันทึกได้: " + err.message;
+    } finally {
+      submitBtn.disabled = false;
+    }
   }
 </script>
 </body>
