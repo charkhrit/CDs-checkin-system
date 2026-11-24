@@ -206,8 +206,8 @@
           <textarea id="add-lost-details" rows="2" placeholder="เช่น เสื้อยืดสีฟ้า กางเกงขาสั้นสีดำ" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none"></textarea>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">URL รูปภาพ (ถ้ามี)</label>
-          <input type="url" id="add-lost-img" placeholder="https://..." class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:border-red-400 outline-none">
+          <label class="block text-xs font-bold text-slate-300 mb-1">อัปโหลดรูปภาพ (ถ้ามี)</label>
+          <input type="file" id="add-lost-file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
         </div>
         <div id="add-lost-status-msg" class="text-xs font-bold min-h-[18px]"></div>
         <div class="flex gap-2 pt-2">
@@ -215,6 +215,22 @@
           <button type="submit" id="add-lost-submit-btn" class="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition">บันทึกประกาศ</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- 📱 Modal QR Code สำหรับเปิดหน้า Public View -->
+  <div id="qr-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-sm rounded-2xl bg-slate-900 border-2 border-emerald-500/60 p-6 text-center shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-extrabold text-emerald-400">📱 สแกนดูผ่านมือถือ</h3>
+        <button type="button" onclick="closeQrModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+      </div>
+      <p class="text-xs text-slate-300 mb-4">สำหรับเจ้าหน้าที่หรือผู้ปกครองสแกนดูศูนย์ข้อมูลเด็กพลัดหลง (ไม่ต้องล็อกอิน)</p>
+      <div class="bg-white p-3 rounded-xl inline-block mb-4">
+        <img id="qr-modal-img" src="" alt="QR Code" class="w-52 h-52">
+      </div>
+      <div class="text-xs text-sky-300 break-all mb-4" id="qr-modal-url"></div>
+      <button type="button" onclick="closeQrModal()" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition">ปิดหน้าต่าง</button>
     </div>
   </div>
 
@@ -237,6 +253,9 @@
           <span>🟢 Live อัตโนมัติ (20s) | ล่าสุด: <b id="last-update-time">-</b></span>
           <button onclick="forceRefresh()" class="bg-sky-600 hover:bg-sky-500 text-white px-2.5 py-0.5 rounded-full text-xs font-bold transition cursor-pointer">⚡ รีเฟรช</button>
         </div>
+        <button id="sound-toggle-btn" onclick="toggleSoundAlert()" title="เปิด/ปิดเสียงแจ้งเตือนเด็กพลัดหลงใหม่" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-amber-300 border border-amber-700/70 bg-amber-950/40 hover:bg-amber-900/60 transition cursor-pointer">🔊 เสียงเตือน: เปิด</button>
+        <button onclick="openQrModal()" title="สแกน QR เปิดหน้า Public View" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-emerald-300 border border-emerald-700/70 bg-emerald-950/40 hover:bg-emerald-900/60 transition cursor-pointer">📱 QR ดูผ่านมือถือ</button>
+        <button onclick="exportSummaryCsv()" title="ดาวน์โหลดรายงานสรุปหลังจบงาน" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-sky-300 border border-sky-700/70 bg-sky-950/40 hover:bg-sky-900/60 transition cursor-pointer">📥 Export สรุปงาน</button>
         <button onclick="logout()" title="ออกจากระบบ" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-rose-300 border border-rose-800/70 bg-rose-950/40 hover:bg-rose-900/60 transition cursor-pointer">🔒 ล็อกหน้าจอ</button>
       </div>
     </div>
@@ -590,7 +609,7 @@
       }
 
       totalPeopleCount += peopleNum;
-      genderStats[gender] = (genderStats[gender] || 0) + peopleNum;
+      genderStats[gender] = (genderStats[gender] || 0) + 1;
       vehicleStats[vehicle] = (vehicleStats[vehicle] || 0) + 1;
 
       const parsedTime = Date.parse(row["_scanTime"] || row["Timestamp"] || row["เวลา"] || "");
@@ -922,6 +941,10 @@
 
     // เด็กที่ยังไม่พบผู้ปกครองทั้งหมด (ไม่ว่าจะระบุสถานะว่า กำลังตามหา / ยังไม่พบผู้ปกครอง / รออัปเดต)
     const activeMissing = data.filter(c => !isLostChildFound(c.status));
+    if (lastMissingCount !== null && activeMissing.length > lastMissingCount) {
+      playAlertSound();
+    }
+    lastMissingCount = activeMissing.length;
 
     if (activeMissing.length > 0) {
       badge.innerText = activeMissing.length;
@@ -1028,7 +1051,7 @@
     document.getElementById("add-lost-age").value = "";
     document.getElementById("add-lost-location").value = "";
     document.getElementById("add-lost-details").value = "";
-    document.getElementById("add-lost-img").value = "";
+    document.getElementById("add-lost-file").value = "";
     document.getElementById("add-lost-status-msg").innerText = "";
     const modal = document.getElementById("add-lost-modal");
     modal.classList.remove("hidden");
@@ -1041,12 +1064,39 @@
     modal.classList.remove("flex");
   }
 
+  function resizeImageToBase64(file, maxSize = 800) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if (w > maxSize || h > maxSize) {
+            if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+            else { w = Math.round(w * maxSize / h); h = maxSize; }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+        };
+        img.onerror = reject;
+        img.src = ev.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function submitAddLostChild() {
     const name = document.getElementById("add-lost-name").value.trim();
     const age = document.getElementById("add-lost-age").value.trim();
     const location = document.getElementById("add-lost-location").value.trim();
     const details = document.getElementById("add-lost-details").value.trim();
-    const imgUrl = document.getElementById("add-lost-img").value.trim();
+    const imgUrl = "";
+    const fileInput = document.getElementById("add-lost-file");
     const statusMsg = document.getElementById("add-lost-status-msg");
     const submitBtn = document.getElementById("add-lost-submit-btn");
 
@@ -1057,6 +1107,15 @@
     statusMsg.innerText = "กำลังบันทึกข้อมูล...";
 
     try {
+      let imgBase64 = "";
+      let imgMimeType = "";
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        statusMsg.innerText = "กำลังย่อและอัปโหลดรูปภาพ...";
+        const resized = await resizeImageToBase64(fileInput.files[0]);
+        imgBase64 = resized.base64;
+        imgMimeType = resized.mimeType;
+      }
+
       const payload = {
         action: "addLostChild",
         name: name,
@@ -1064,6 +1123,8 @@
         location: location,
         details: details,
         imgUrl: imgUrl,
+        imgBase64: imgBase64,
+        imgMimeType: imgMimeType,
         status: "ยังไม่พบผู้ปกครอง"
       };
       const res = await fetch(GAS_WEBAPP_URL, {
@@ -1089,6 +1150,97 @@
     } finally {
       submitBtn.disabled = false;
     }
+  }
+
+  // 🔊 เสียงแจ้งเตือนเด็กพลัดหลงใหม่ (Web Audio API)
+  let isSoundEnabled = true;
+  let lastMissingCount = null;
+
+  function toggleSoundAlert() {
+    isSoundEnabled = !isSoundEnabled;
+    const btn = document.getElementById("sound-toggle-btn");
+    if (isSoundEnabled) {
+      btn.innerText = "🔊 เสียงเตือน: เปิด";
+      btn.className = "px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-amber-300 border border-amber-700/70 bg-amber-950/40 hover:bg-amber-900/60 transition cursor-pointer";
+      playAlertSound();
+    } else {
+      btn.innerText = "🔇 เสียงเตือน: ปิด";
+      btn.className = "px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-slate-400 border border-slate-700 bg-slate-900/40 hover:bg-slate-800 transition cursor-pointer";
+    }
+  }
+
+  function playAlertSound() {
+    if (!isSoundEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [880, 1174].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.18, ctx.currentTime + idx * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.18 + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.18);
+        osc.stop(ctx.currentTime + idx * 0.18 + 0.25);
+      });
+    } catch {}
+  }
+
+  // 📱 QR Code สำหรับเปิดหน้า Public View
+  function openQrModal() {
+    const publicUrl = new URL("public-dashboard.html", window.location.href).href;
+    document.getElementById("qr-modal-url").innerText = publicUrl;
+    document.getElementById("qr-modal-img").src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(publicUrl);
+    const modal = document.getElementById("qr-modal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+
+  function closeQrModal() {
+    const modal = document.getElementById("qr-modal");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  // 📥 Export สรุปยอดหลังจบงานเป็น CSV (รองรับภาษาไทยใน Excel)
+  function exportSummaryCsv() {
+    const totalPeople = document.getElementById("sumTotalPeople")?.innerText || "0";
+    const checkedInPeople = document.getElementById("sumCheckedInPeople")?.innerText || "0";
+    const pendingPeople = document.getElementById("sumPendingPeople")?.innerText || "0";
+
+    const lines = [
+      ["รายงานสรุปงานวันเด็ก กองบิน 46 พิษณุโลก", new Date().toLocaleString("th-TH")],
+      [],
+      ["สรุปยอดผู้เข้าร่วมงาน", "จำนวน"],
+      ["ลงทะเบียนทั้งหมด", totalPeople],
+      ["เช็กอินเข้างานแล้ว", checkedInPeople],
+      ["รอเดินทางเข้างาน", pendingPeople],
+      [],
+      ["รายการเด็กพลัดหลง", "อายุ", "จุดที่พบ", "สถานะ", "ผู้ปกครอง", "เบอร์โทร", "หมายเหตุ"]
+    ];
+
+    (lostAllItems || []).forEach(c => {
+      lines.push([
+        c.name || "",
+        c.age || "",
+        c.location || "",
+        c.status || "",
+        c.guardianName || "",
+        c.guardianPhone || "",
+        c.foundNote || ""
+      ]);
+    });
+
+    const csvContent = "\uFEFF" + lines.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `summary-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 </script>
 </body>
