@@ -375,8 +375,14 @@
           const isFound = isLostChildFound(st);
           const bClass = isFound ? 'status-found' : 'status-missing';
           const cardClass = isFound ? 'lost-card found' : 'lost-card';
+          const rawPubUrl = String(child.publicImgUrl || "").trim();
+          const driveMatch = rawPubUrl.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{15,})/);
+          const resolvedPubUrl = driveMatch ? `https://lh3.googleusercontent.com/d/${driveMatch[1]}=w400` : rawPubUrl;
           const avatarEmoji = (String(child.name || "").includes("หญิง") || String(child.details || "").includes("กระโปรง")) ? "👧" : "👦";
-          const imgTag = `<div class="w-full sm:w-24 h-28 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex flex-col items-center justify-center shrink-0"><span class="text-4xl sm:text-5xl leading-none">${avatarEmoji}</span><span class="text-[10px] text-amber-300 font-bold mt-1">PDPA</span></div>`;
+          const avatarHtml = `<div class="w-full sm:w-24 h-28 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex flex-col items-center justify-center shrink-0"><span class="text-4xl sm:text-5xl leading-none">${avatarEmoji}</span><span class="text-[10px] text-amber-300 font-bold mt-1">PDPA</span></div>`;
+          const imgTag = resolvedPubUrl
+            ? `<img src="${escapeHtml(resolvedPubUrl)}" alt="รูปการแต่งกายน้อง (PDPA)" onerror="this.outerHTML='<div class=\\'w-full sm:w-24 h-28 sm:h-24 rounded-xl bg-slate-800/90 border border-white/20 flex flex-col items-center justify-center shrink-0\\'><span class=\\'text-4xl sm:text-5xl leading-none\\'>${avatarEmoji}</span><span class=\\'text-[10px] text-amber-300 font-bold mt-1\\'>PDPA</span></div>'">`
+            : avatarHtml;
           return `
             <div class="${cardClass}">
               ${imgTag}

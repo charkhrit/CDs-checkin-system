@@ -6,6 +6,8 @@
   <title>Dashboard - กองบิน 46 พิษณุโลก (Live Single-Screen Command Center)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.min.js"></script>
   <style>
     :root { 
       --bg-space: #030712; 
@@ -1069,37 +1071,97 @@
     modal.classList.remove("flex");
   }
 
-  function resizeImageToBase64(file, maxSize = 800) {
+  let faceModelPromise = null;
+  function getFaceModel() {
+    if (!faceModelPromise && window.blazeface) {
+      faceModelPromise = window.blazeface.load().catch(() => null);
+    }
+    return faceModelPromise || Promise.resolve(null);
+  }
+
+  function processLostChildImages(file, maxSize = 800) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
           let w = img.width, h = img.height;
           if (w > maxSize || h > maxSize) {
             if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
             else { w = Math.round(w * maxSize / h); h = maxSize; }
           }
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, w, h);
 
-          // 🔒 วาดแถบปิดบังใบหน้า (PDPA) ฝังลงในไฟล์รูปจริงถาวรก่อนอัปโหลดเข้า Drive
-          const maskH = Math.round(h * 0.48);
-          ctx.fillStyle = "#0f172a";
-          ctx.fillRect(0, 0, w, maskH);
-          ctx.fillStyle = "#fbbf24";
-          ctx.fillRect(0, maskH - 4, w, 4);
-          ctx.fillStyle = "#f8fafc";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.font = `bold ${Math.max(18, Math.round(w * 0.08))}px sans-serif`;
-          ctx.fillText("😊 PDPA PROTECTED", w / 2, maskH / 2);
+          // 1) รูปฉบับเต็มสำหรับ Admin Dashboard
+          const adminCanvas = document.createElement("canvas");
+          adminCanvas.width = w;
+          adminCanvas.height = h;
+          const adminCtx = adminCanvas.getContext("2d");
+          adminCtx.drawImage(img, 0, 0, w, h);
+          const adminDataUrl = adminCanvas.toDataURL("image/jpeg", 0.82);
 
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-          resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+          // 2) รูปฉบับ PDPA สำหรับ Public Dashboard (ใช้ AI ตรวจจับใบหน้าแล้วปิดทับถาวร)
+          const pubCanvas = document.createElement("canvas");
+          pubCanvas.width = w;
+          pubCanvas.height = h;
+          const pubCtx = pubCanvas.getContext("2d");
+          pubCtx.drawImage(img, 0, 0, w, h);
+
+          let faces = [];
+          try {
+            const model = await getFaceModel();
+            if (model) {
+              faces = await model.estimateFaces(adminCanvas, false);
+            }
+          } catch {}
+
+          if (faces && faces.length > 0) {
+            faces.forEach(face => {
+              const start = face.topLeft;
+              const end = face.bottomRight;
+              const fw = end[0] - start[0];
+              const fh = end[1] - start[1];
+              const padX = fw * 0.25;
+              const padY = fh * 0.30;
+              const cx = start[0] + fw / 2;
+              const cy = start[1] + fh / 2;
+              const rx = (fw / 2) + padX;
+              const ry = (fh / 2) + padY;
+
+              // วาดวงกลมทึบ + สติกเกอร์หน้ายิ้มปิดทับใบหน้าถาวร
+              pubCtx.save();
+              pubCtx.beginPath();
+              pubCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+              pubCtx.fillStyle = "#fde047";
+              pubCtx.fill();
+              pubCtx.lineWidth = Math.max(3, Math.round(w * 0.008));
+              pubCtx.strokeStyle = "#0f172a";
+              pubCtx.stroke();
+              pubCtx.textAlign = "center";
+              pubCtx.textBaseline = "middle";
+              pubCtx.font = `${Math.max(24, Math.round(Math.min(rx, ry) * 1.35))}px sans-serif`;
+              pubCtx.fillText("😊", cx, cy);
+              pubCtx.restore();
+            });
+          } else {
+            // Fallback: หาก AI ตรวจจับใบหน้าไม่ชัดเจน ให้ปิดครึ่งบนอัตโนมัติกันพลาด PDPA
+            const maskH = Math.round(h * 0.48);
+            pubCtx.fillStyle = "#0f172a";
+            pubCtx.fillRect(0, 0, w, maskH);
+            pubCtx.fillStyle = "#fbbf24";
+            pubCtx.fillRect(0, maskH - 4, w, 4);
+            pubCtx.fillStyle = "#f8fafc";
+            pubCtx.textAlign = "center";
+            pubCtx.textBaseline = "middle";
+            pubCtx.font = `bold ${Math.max(18, Math.round(w * 0.07))}px sans-serif`;
+            pubCtx.fillText("😊 PDPA PROTECTED", w / 2, maskH / 2);
+          }
+
+          const pubDataUrl = pubCanvas.toDataURL("image/jpeg", 0.82);
+          resolve({
+            adminBase64: adminDataUrl.split(",")[1],
+            publicBase64: pubDataUrl.split(",")[1],
+            mimeType: "image/jpeg"
+          });
         };
         img.onerror = reject;
         img.src = ev.target.result;
@@ -1127,12 +1189,15 @@
 
     try {
       let imgBase64 = "";
+      let publicImgBase64 = "";
       let imgMimeType = "";
       if (fileInput && fileInput.files && fileInput.files[0]) {
-        statusMsg.innerText = "กำลังย่อและอัปโหลดรูปภาพ...";
-        const resized = await resizeImageToBase64(fileInput.files[0]);
-        imgBase64 = resized.base64;
-        imgMimeType = resized.mimeType;
+        statusMsg.innerText = "🤖 AI กำลังตรวจจับและปิดบังใบหน้า (PDPA)...";
+        const processed = await processLostChildImages(fileInput.files[0]);
+        imgBase64 = processed.adminBase64;
+        publicImgBase64 = processed.publicBase64;
+        imgMimeType = processed.mimeType;
+        statusMsg.innerText = "กำลังอัปโหลดรูปภาพเข้า Google Drive...";
       }
 
       const payload = {
@@ -1143,6 +1208,7 @@
         details: details,
         imgUrl: imgUrl,
         imgBase64: imgBase64,
+        publicImgBase64: publicImgBase64,
         imgMimeType: imgMimeType,
         status: "ยังไม่พบผู้ปกครอง"
       };
